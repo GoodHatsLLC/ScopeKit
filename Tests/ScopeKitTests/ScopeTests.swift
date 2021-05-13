@@ -28,16 +28,45 @@ final class DependencyKitTests: XCTestCase {
     func testAttachmentUpdatesSubjects() {
         let scope = Scope()
         XCTAssertNil(scope.superscopeSubject.value.get())
+        XCTAssertNil(activeRoot.subscopesSubject.value.first)
         scope.attach(to: activeRoot)
         XCTAssert(scope.superscopeSubject.value.get() === activeRoot)
+        XCTAssert(activeRoot.subscopesSubject.value.first === scope)
+    }
+
+    func testMultipleSubscopeAttatchmentAndOrdering() {
+        let subscopes = [Scope(), Scope(), Scope()]
+        XCTAssertEqual(activeRoot.subscopesSubject.value.count, 0)
+        XCTAssert(
+            subscopes
+                .map(\.superscopeSubject.value)
+                .allSatisfy { $0.get() === nil}
+        )
+        subscopes.forEach {
+            $0.attach(to: activeRoot)
+        }
+        XCTAssertEqual(activeRoot.subscopesSubject.value.count, subscopes.count)
+        XCTAssert(
+            // This asserts order is maintained
+            zip(activeRoot.subscopesSubject.value, subscopes)
+                .map(===)
+                .reduce(true) { $0 && $1 }
+        )
+        XCTAssert(
+            subscopes
+                .map(\.superscopeSubject.value)
+                .allSatisfy { $0.get() === activeRoot}
+        )
     }
 
     func testDetatchmentUpdatesSubjects() {
         let scope = Scope()
         scope.attach(to: activeRoot)
         XCTAssert(scope.superscopeSubject.value.get() === activeRoot)
+        XCTAssert(activeRoot.subscopesSubject.value.first === scope)
         scope.detach()
         XCTAssertNil(scope.superscopeSubject.value.get())
+        XCTAssertNil(activeRoot.subscopesSubject.value.first)
     }
 
     func testAttachmentPreventsRelease() {
@@ -75,32 +104,6 @@ final class DependencyKitTests: XCTestCase {
         weakSubscope?.detach()
         XCTAssertNil(weakSubscope)
     }
-
-//    func testMultipleSubscopesAreAttached() {
-//        let activeRoot = Scope()
-//        let subscopes = [Scope(), Scope(), Scope()]
-//        XCTAssertEqual(activeRoot.subscopesSubject.value.count, 0)
-//        XCTAssert(
-//            subscopes
-//                .map(\.superscopeSubject.value)
-//                .allSatisfy { $0 === nil}
-//        )
-//        subscopes.forEach {
-//            $0.attach(to: activeRoot)
-//        }
-//        XCTAssertEqual(activeRoot.subscopesSubject.value.count, subscopes.count)
-//        XCTAssert(
-//            // This asserts order is maintained
-//            zip(activeRoot.subscopesSubject.value, subscopes)
-//                .map(===)
-//                .reduce(true) { $0 && $1 }
-//        )
-//        XCTAssert(
-//            subscopes
-//                .map(\.superscopeSubject.value)
-//                .allSatisfy { $0 === activeRoot}
-//        )
-//    }
 
     func testActivationUpdatesSubscope() {
         let scope = Scope()
