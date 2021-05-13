@@ -163,37 +163,32 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testStartCallsWillStart() {
-        var callCount = 0
-        let scope = ScopeEventReporter(willStartCallback: { callCount = $0 })
-        XCTAssertEqual(callCount, 0)
+        let scope = ScopeEventReporter()
+        XCTAssertEqual(scope.willStartCount, 0)
         scope.start()
-        XCTAssertEqual(callCount, 1)
+        XCTAssertEqual(scope.willStartCount, 1)
     }
 
     func testSuspendCallsWillSuspendOnlyIfPreviouslyStarted() {
-        var callCount = 0
-        let scope = ScopeEventReporter(willSuspendCallback: { callCount = $0 })
+        let scope = ScopeEventReporter()
         scope.suspend()
-        XCTAssertEqual(callCount, 0)
+        XCTAssertEqual(scope.willSuspendCount, 0)
         scope.start()
-        XCTAssertEqual(callCount, 0)
         scope.suspend()
-        XCTAssertEqual(callCount, 1)
+        XCTAssertEqual(scope.willSuspendCount, 1)
     }
 
     func testEndCallsWillEndOnlyIfPreviouslyStarted() {
-        var willEndCallCount = 0
-        let scope = ScopeEventReporter(willEndCallback: { willEndCallCount = $0 })
+        let scope = ScopeEventReporter()
         scope.end()
-        XCTAssertEqual(willEndCallCount, 0)
+        XCTAssertEqual(scope.willEndCount, 0)
         scope.start()
-        XCTAssertEqual(willEndCallCount, 0)
         scope.end()
-        XCTAssertEqual(willEndCallCount, 1)
+        XCTAssertEqual(scope.willEndCount, 1)
     }
 
     func testStartTriggersSubscription() {
-        let rep = reportingPublisher()
+        let rep = reportingPublisher(TestEvent.state)
         let scope = ScopeEventReporter(eventPublisher: rep.publisher)
         XCTAssertEqual(rep.subscriptionCallCount(), 0)
         scope.start()
@@ -201,7 +196,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testStartTriggersRequest() {
-        let rep = reportingPublisher()
+        let rep = reportingPublisher(TestEvent.state)
         let scope = ScopeEventReporter(eventPublisher: rep.publisher)
         XCTAssertEqual(rep.requestCallCount(), 0)
         scope.start()
@@ -209,7 +204,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testStartAllowsEvent() {
-        let rep = reportingPublisher()
+        let rep = reportingPublisher(TestEvent.state)
         let scope = ScopeEventReporter(eventPublisher: rep.publisher)
         XCTAssertEqual(rep.eventCallCount(), 0)
         scope.start()
@@ -217,7 +212,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testSuspendTriggersCancel() {
-        let rep = reportingPublisher()
+        let rep = reportingPublisher(TestEvent.state)
         let scope = ScopeEventReporter(eventPublisher: rep.publisher)
         scope.start()
         XCTAssertEqual(rep.cancelCallCount(), 0)
@@ -226,7 +221,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testEndTriggersCancel() {
-        let rep = reportingPublisher()
+        let rep = reportingPublisher(TestEvent.state)
         let scope = ScopeEventReporter(eventPublisher: rep.publisher)
         scope.start()
         XCTAssertEqual(rep.cancelCallCount(), 0)
@@ -240,11 +235,9 @@ enum TestEvent {
     case state
 }
 
-
-
-func reportingPublisher() -> (
-    subject: CurrentValueSubject<TestEvent, Error>,
-    publisher: AnyPublisher<TestEvent, Error>,
+func reportingPublisher<Output>(_ initial: Output) -> (
+    subject: CurrentValueSubject<Output, Error>,
+    publisher: AnyPublisher<Output, Error>,
     subscriptionCallCount: () -> Int,
     eventCallCount: () -> Int,
     completionCallCount: () -> Int,
@@ -256,7 +249,7 @@ func reportingPublisher() -> (
     var completionCallCount = 0
     var cancelCallCount = 0
     var requestCallCount = 0
-    let subject = CurrentValueSubject<TestEvent, Error>(.state)
+    let subject = CurrentValueSubject<Output, Error>(initial)
     let publisher = subject.handleEvents { subscription in
         subscriptionCallCount += 1
     } receiveOutput: { event in
@@ -281,45 +274,29 @@ func reportingPublisher() -> (
 
 class ScopeEventReporter: Scope {
 
-    private let willStartCallback: ((Int) -> ())?
-    private var willStartCallCount = 0
-    private let willSuspendCallback: ((Int) -> ())?
-    private var willSuspendCallCount = 0
-    private let willEndCallback: ((Int) -> ())?
-    private var willEndCallCount = 0
+    var willStartCount = 0
+    var willSuspendCount = 0
+    var willEndCount = 0
 
     private let eventPublisher: AnyPublisher<TestEvent, Error>
 
-    required init(eventPublisher: AnyPublisher<TestEvent, Error> = Empty<TestEvent, Error>().eraseToAnyPublisher(),
-                  willStartCallback: ((Int) -> ())? = nil,
-                  willSuspendCallback: ((Int) -> ())? = nil,
-                  willEndCallback: ((Int) -> ())? = nil) {
+    required init(eventPublisher: AnyPublisher<TestEvent, Error> = Empty<TestEvent, Error>().eraseToAnyPublisher()) {
         self.eventPublisher = eventPublisher
-        self.willStartCallback = willStartCallback
-        self.willSuspendCallback = willSuspendCallback
-        self.willEndCallback = willEndCallback
     }
 
     override func willStart() -> CancelBag {
-        willStartCallCount += 1
-        willStartCallback?(willStartCallCount)
+        willStartCount += 1
         return CancelBag {
             eventPublisher
-                .sink(receiveCompletion: {_ in
-                    print("compl")
-                }, receiveValue: {_ in
-                    print("v")
-                })
+                .sink(receiveCompletion: {_ in }, receiveValue: {_ in })
         }
     }
 
     override func willSuspend() {
-        willSuspendCallCount += 1
-        willSuspendCallback?(willSuspendCallCount)
+        willSuspendCount += 1
     }
 
     override func willEnd() {
-        willEndCallCount += 1
-        willEndCallback?(willEndCallCount)
+        willEndCount += 1
     }
 }
