@@ -256,13 +256,62 @@ final class DependencyKitTests: XCTestCase {
         XCTAssertEqual(rep.cancelCallCount(), 1)
     }
 
+    func testWillStartCascadeBeginsAtSuperscope() {
+        var superscopeStarted = false
+        var subscopeStarted = false
+        let superscope = LifecycleCallbackScope(start: {
+            XCTAssert(!subscopeStarted)
+            superscopeStarted = true
+        })
+        superscope.start()
+        let subscope = LifecycleCallbackScope(start: {
+            XCTAssert(superscopeStarted)
+            subscopeStarted = true
+        })
+        subscope.start()
+        subscope.attach(to: superscope)
+        XCTAssert(!superscopeStarted)
+        XCTAssert(!subscopeStarted)
+        superscope.attach(to: activeRoot) // ooh. not sufficient to start?
+        XCTAssert(superscopeStarted)
+        XCTAssert(subscopeStarted)
+    }
+
+    func testWillSuspendCascadeBeginsAtSubscope() {
+    }
+
+    func testWillCompleteCascadeBeginsAtSubscope() {
+    }
+
+    func testCompletionCascadeBeginsAtSuperscope() {
+        let subject = CurrentValueSubject<TestEvent, Error>(.state)
+        let publisher = subject.handleEvents { subscription in
+        } receiveOutput: { event in
+        } receiveCompletion: { completion in
+        } receiveCancel: {
+        } receiveRequest: { request in
+        }.eraseToAnyPublisher()
+    }
+
+    func testCancelCascadeBeginsAtSuperscope() {
+        let subject = CurrentValueSubject<TestEvent, Error>(.state)
+        let publisher = subject.handleEvents { subscription in
+        } receiveOutput: { event in
+        } receiveCompletion: { completion in
+        } receiveCancel: {
+        } receiveRequest: { request in
+        }.eraseToAnyPublisher()
+    }
+
+
 }
 
 enum TestEvent {
     case state
 }
 
-func reportingPublisher<Output>(_ initial: Output) -> (
+func reportingPublisher<Output>(_ initial: Output) ->
+(
     subject: CurrentValueSubject<Output, Error>,
     publisher: AnyPublisher<Output, Error>,
     subscriptionCallCount: () -> Int,
@@ -309,7 +358,7 @@ extension Scope {
     }
 }
 
-class ScopeEventReporter: Scope {
+final class ScopeEventReporter: Scope {
 
     var willStartCount = 0
     var willStopCount = 0
@@ -317,7 +366,9 @@ class ScopeEventReporter: Scope {
 
     private let eventPublisher: AnyPublisher<TestEvent, Error>
 
-    required init(eventPublisher: AnyPublisher<TestEvent, Error> = Empty<TestEvent, Error>().eraseToAnyPublisher()) {
+    required init(
+        eventPublisher: AnyPublisher<TestEvent, Error> = Empty<TestEvent, Error>().eraseToAnyPublisher()
+    ) {
         self.eventPublisher = eventPublisher
     }
 
@@ -335,5 +386,35 @@ class ScopeEventReporter: Scope {
 
     override func willEnd() {
         willEndCount += 1
+    }
+}
+
+final class LifecycleCallbackScope: Scope {
+
+    private let start: (() -> ())?
+    private let stop: (() -> ())?
+    private let end: (() -> ())?
+
+    init(
+        start: (() -> ())? = nil,
+        stop:  (() -> ())? = nil,
+        end:  (() -> ())? = nil
+    ) {
+        self.start = start
+        self.stop = stop
+        self.end = end
+    }
+
+    override func willStart() -> CancelBag {
+        start()
+        return CancelBag()
+    }
+
+    override func willStop() {
+        stop()
+    }
+
+    override func willEnd() {
+        end()
     }
 }
