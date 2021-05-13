@@ -289,7 +289,7 @@ final class DependencyKitTests: XCTestCase {
         XCTAssert(!subscopeStarted)
         XCTAssert(!subscope.isSyncActive)
         superscope.attach(to: activeRoot)
-        XCTAssert(subscope.isSyncActive) // ooh. Doesn't indicate started.
+        XCTAssert(subscope.isSyncActive)
         XCTAssert(superscopeStarted)
         XCTAssert(subscopeStarted)
     }
@@ -377,9 +377,9 @@ extension Scope {
 
 final class ReportingScope: Scope {
 
-    private let start: (() -> ())?
-    private let stop: (() -> ())?
-    private let end: (() -> ())?
+    private let startCallback: (() -> ())?
+    private let stopCallback: (() -> ())?
+    private let endCallback: (() -> ())?
     private let eventPublisher: AnyPublisher<TestEvent, Error>
     var willStartCount = 0
     var willStopCount = 0
@@ -391,14 +391,14 @@ final class ReportingScope: Scope {
         stop:  (() -> ())? = nil,
         end:  (() -> ())? = nil
     ) {
-        self.start = start
-        self.stop = stop
-        self.end = end
+        self.startCallback = start
+        self.stopCallback = stop
+        self.endCallback = end
         self.eventPublisher = eventPublisher
     }
 
     override func willStart() -> CancelBag {
-        start()
+        startCallback?()
         willStartCount += 1
         return CancelBag {
             eventPublisher
@@ -407,12 +407,12 @@ final class ReportingScope: Scope {
     }
 
     override func willStop() {
-        stop()
+        stopCallback?()
         willStopCount += 1
     }
 
     override func willEnd() {
-        end()
+        endCallback?()
         willEndCount += 1
     }
 }
