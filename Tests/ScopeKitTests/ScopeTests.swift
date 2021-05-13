@@ -272,7 +272,9 @@ final class DependencyKitTests: XCTestCase {
         subscope.attach(to: superscope)
         XCTAssert(!superscopeStarted)
         XCTAssert(!subscopeStarted)
-        superscope.attach(to: activeRoot) // ooh. not sufficient to start?
+        XCTAssert(!subscope.isSyncActive)
+        superscope.attach(to: activeRoot)
+        XCTAssert(subscope.isSyncActive) // ooh. Doesn't indicate started.
         XCTAssert(superscopeStarted)
         XCTAssert(subscopeStarted)
     }
