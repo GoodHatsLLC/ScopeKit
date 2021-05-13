@@ -27,20 +27,19 @@ final class DependencyKitTests: XCTestCase {
 
     func testAttachmentUpdatesSubjects() {
         let scope = Scope()
-        XCTAssertNil(scope.superscopeSubject.value)
+        XCTAssertNil(scope.superscopeSubject.value.get())
         scope.attach(to: activeRoot)
-        XCTAssert(scope.superscopeSubject.value === activeRoot)
+        XCTAssert(scope.superscopeSubject.value.get() === activeRoot)
     }
 
     func testDetatchmentUpdatesSubjects() {
         let scope = Scope()
         scope.attach(to: activeRoot)
-        XCTAssert(scope.superscopeSubject.value === activeRoot)
+        XCTAssert(scope.superscopeSubject.value.get() === activeRoot)
         scope.detach()
-        XCTAssertNil(scope.superscopeSubject.value)
+        XCTAssertNil(scope.superscopeSubject.value.get())
     }
 
-    // TODO: must hold children even when not active
     func testAttachmentPreventsRelease() {
         var scope: Scope? = Scope()
         weak var weakSubscope = scope!
@@ -49,12 +48,22 @@ final class DependencyKitTests: XCTestCase {
         XCTAssertNotNil(weakSubscope)
     }
 
-    func testNoInitRetainCycles() {
+    func testDoesNotRetainSelf() {
         var scope: Scope? = Scope()
         weak var weakScope: Scope? = scope
         XCTAssertNotNil(weakScope)
         scope = nil
         XCTAssertNil(weakScope)
+    }
+
+    func testDoesNotRetainSuperscope() {
+        var superscope: Scope? = Scope()
+        weak var weakSuperscope: Scope? = superscope
+        let scope = Scope()
+        scope.attach(to: superscope!)
+        XCTAssertNotNil(weakSuperscope)
+        superscope = nil
+        XCTAssertNil(weakSuperscope)
     }
 
     func testDetachmentTriggersRelease() {
@@ -287,7 +296,7 @@ func reportingPublisher<Output>(_ initial: Output) -> (
     )
 }
 
-extension ScopeType {
+extension Scope {
     var isSyncActive: Bool {
         var isSyncActive = false
         isActivePublisher.sink {

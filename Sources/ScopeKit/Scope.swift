@@ -1,39 +1,34 @@
 import Combine
 import Foundation
 
-public protocol ScopeType: AnyObject {
-    var isActivePublisher: AnyPublisher<Bool, Never> { get }
-    func retain(subscope: ScopeType)
-    func release(subscope: ScopeType)
-}
 
-public final class RootScope: ScopeType {
-    // only for retaining
-    let subscopesSubject = CurrentValueSubject<[ScopeType], Never>([])
-    public func retain(subscope: ScopeType) {
+public final class RootScope: Scope {
+
+    override fileprivate func retain(subscope: Scope) {
         subscopesSubject.value.append(subscope)
     }
 
-    public func release(subscope: ScopeType) {
+    override fileprivate func release(subscope: Scope) {
         subscopesSubject.value.removeAll { $0 === subscope }
     }
 
     private let isActiveSubject = CurrentValueSubject<Bool, Never>(false)
-    public var isActivePublisher: AnyPublisher<Bool, Never> {
+
+    override var isActivePublisher: AnyPublisher<Bool, Never> {
         isActiveSubject.eraseToAnyPublisher()
     }
 
-    public func start() {
+    override public func start() {
         isActiveSubject.send(true)
     }
 
-    public func stop() {
+    override public func stop() {
         isActiveSubject.send(false)
     }
 }
 
 // MARK: Scope
-open class Scope: ScopeType {
+open class Scope {
 
     private var lifecycleBag = CancelBag()
     fileprivate var workBag = CancelBag()
@@ -42,29 +37,28 @@ open class Scope: ScopeType {
     var selfAllowsActivePublisher: AnyPublisher<Bool, Never> {
         selfAllowsActiveSubject.eraseToAnyPublisher()
     }
-    let superscopeSubject = CurrentValueSubject<ScopeType?, Never>(nil)
-    var superscopePublisher: AnyPublisher<ScopeType?, Never> {
+    let superscopeSubject = CurrentValueSubject<Weak<Scope>, Never>(Weak(nil))
+    var superscopePublisher: AnyPublisher<Weak<Scope>, Never> {
         superscopeSubject
-            .removeDuplicates { $0 === $1 }
+            .removeDuplicates { $0.get() === $1.get() }
             .eraseToAnyPublisher()
     }
 
     // only for retaining
-    let subscopesSubject = CurrentValueSubject<[ScopeType], Never>([])
+    let subscopesSubject = CurrentValueSubject<[Scope], Never>([])
 
-    public func retain(subscope: ScopeType) {
+    fileprivate func retain(subscope: Scope) {
         subscopesSubject.value.append(subscope)
     }
 
-    public func release(subscope: ScopeType) {
+    fileprivate func release(subscope: Scope) {
         subscopesSubject.value.removeAll { $0 === subscope }
     }
 
-
-    var superIsActivePublisher: AnyPublisher<Bool?, Never> {
+    private var superIsActivePublisher: AnyPublisher<Bool?, Never> {
         superscopePublisher
             .map { superscope in
-                superscope?
+                superscope.get()?
                     .isActivePublisher
                     .map { Optional($0) }
                     .eraseToAnyPublisher()
@@ -75,7 +69,7 @@ open class Scope: ScopeType {
             .eraseToAnyPublisher()
     }
 
-    public var isActivePublisher: AnyPublisher<Bool, Never> {
+    var isActivePublisher: AnyPublisher<Bool, Never> {
         superIsActivePublisher // Does a completion here propagate?
             .replaceNil(with: false)
             .combineLatest(selfAllowsActivePublisher) { $0 && $1 }
@@ -85,22 +79,23 @@ open class Scope: ScopeType {
     init() { subscribeToLifecycle() }
 
     private struct ScopeScan {
-        let last: ScopeType?
-        let curr: ScopeType?
+        let last: Weak<Scope>
+        let curr: Weak<Scope>
     }
 
     private func subscribeToLifecycle() {
         superscopePublisher
-            .removeDuplicates { $0 === $1 }
-            .scan(ScopeScan(last: nil, curr: nil)) { prev, newScope in
+            .dropFirst(1) // Don't fire for Initial value
+            .removeDuplicates { $0.get() === $1.get() }
+            .scan(ScopeScan(last: Weak(nil), curr: Weak(nil))) { prev, newScope in
                 ScopeScan(last: prev.curr, curr: newScope)
             }
             .sink { [weak self] scan in
                 guard let self = self else { return }
-                if let last = scan.last {
+                if let last = scan.last.get() {
                     last.release(subscope: self)
                 }
-                if let curr = scan.curr {
+                if let curr = scan.curr.get() {
                     curr.retain(subscope: self)
                 }
             }.store(in: lifecycleBag)
@@ -135,19 +130,19 @@ open class Scope: ScopeType {
 
     public func end() {
         selfAllowsActiveSubject.send(false)
-        superscopeSubject.send(nil)
+        superscopeSubject.send(Weak(nil))
         selfAllowsActiveSubject.send(completion: .finished)
         superscopeSubject.send(completion: .finished)
     }
 
     /// Bind the Scope's lifecycle to the passed Scope as a subscope.
-    public func attach(to superscope: ScopeType) {
-        superscopeSubject.send(superscope)
+    public func attach(to superscope: Scope) {
+        superscopeSubject.send(Weak(superscope))
     }
 
     /// Removes the Scope from the lifecycle of its superscope.
     public func detach() {
-        superscopeSubject.send(nil)
+        superscopeSubject.send(Weak(nil))
     }
 
 
