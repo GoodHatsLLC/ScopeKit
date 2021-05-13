@@ -44,6 +44,14 @@ final class DependencyKitTests: XCTestCase {
         XCTAssert(root.subscopesSubject.value.first === weakSubscope)
     }
 
+    func testNoInitRetainCycles() {
+        var root: Scope? = Scope()
+        weak var weakSubscope: Scope? = root
+        XCTAssertNotNil(weakSubscope)
+        root = nil
+        XCTAssertNil(weakSubscope)
+    }
+
     func testDetachmentTriggersRelease() {
         let root = Scope()
         Scope().attach(to: root)

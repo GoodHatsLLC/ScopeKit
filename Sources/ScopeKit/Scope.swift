@@ -26,11 +26,13 @@ open class Scope {
                 subscopesSubject
                     .first()
                     .map { (isActive, $0)} }
-            .sink(receiveCompletion: {_ in
+            .sink(receiveCompletion: { [weak self] _ in
+                guard let self = self else { return }
                 self.willEnd()
                 subscopesSubject.send(completion: .finished)
                 self.bag.cancel()
-            }, receiveValue: { (isActive, subscopes) in
+            }, receiveValue: { [weak self] (isActive, subscopes) in
+                guard let self = self else { return }
                 if isActive {
                     self.willStart().store(in: self.bag)
                     subscopes.forEach {
@@ -77,8 +79,9 @@ open class Scope {
         isActiveSubject.send(false)
     }
 
-    public func end() {
+    func end() {
         isActiveSubject.send(completion: .finished)
+        lifecycleBag.cancel()
     }
 
     // Bind the Scope's lifecycle to the passed Scope as a subscope.
@@ -97,7 +100,7 @@ open class Scope {
     }
 
     // Removes the Scope from the lifecycle of its superscope.
-    public func detach() {
+    func detach() {
         let superscopeSubject = superscopeSubject
         superscopeSubject
             .compactMap { $0 }
@@ -108,9 +111,9 @@ open class Scope {
             .sink { (updatedSubscopes, supersSubscopeSubject) in
                 supersSubscopeSubject.send(updatedSubscopes)
                 superscopeSubject.send(nil)
+                self.end()
             }
             .store(in: bag)
-
     }
 
 
