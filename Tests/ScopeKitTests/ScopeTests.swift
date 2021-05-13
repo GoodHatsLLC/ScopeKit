@@ -193,162 +193,90 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testStartTriggersSubscription() {
-        var subscriptionCallCount = 0
-        var eventCallCount = 0
-        var completionCallCount = 0
-        var cancelCallCount = 0
-        var requestCallCount = 0
-        let testSubject = CurrentValueSubject<TestEvent, Error>(.state)
-            .handleEvents { subscription in
-                subscriptionCallCount += 1
-            } receiveOutput: { event in
-                eventCallCount += 1
-            } receiveCompletion: { completion in
-                completionCallCount += 1
-            } receiveCancel: {
-                cancelCallCount += 1
-            } receiveRequest: { request in
-                requestCallCount += 1
-            }
-
-        let scope = ScopeEventReporter(eventPublisher: testSubject.eraseToAnyPublisher())
-        XCTAssertEqual(subscriptionCallCount, 0)
+        let rep = reportingPublisher()
+        let scope = ScopeEventReporter(eventPublisher: rep.publisher)
+        XCTAssertEqual(rep.subscriptionCallCount(), 0)
         scope.start()
-        XCTAssertEqual(subscriptionCallCount, 1)
+        XCTAssertEqual(rep.subscriptionCallCount(), 1)
     }
 
     func testStartTriggersRequest() {
-        var subscriptionCallCount = 0
-        var eventCallCount = 0
-        var completionCallCount = 0
-        var cancelCallCount = 0
-        var requestCallCount = 0
-        let testSubject = CurrentValueSubject<TestEvent, Error>(.state)
-            .handleEvents { subscription in
-                subscriptionCallCount += 1
-            } receiveOutput: { event in
-                eventCallCount += 1
-            } receiveCompletion: { completion in
-                completionCallCount += 1
-            } receiveCancel: {
-                cancelCallCount += 1
-            } receiveRequest: { request in
-                requestCallCount += 1
-            }
-
-        let scope = ScopeEventReporter(eventPublisher: testSubject.eraseToAnyPublisher())
-        XCTAssertEqual(requestCallCount, 0)
+        let rep = reportingPublisher()
+        let scope = ScopeEventReporter(eventPublisher: rep.publisher)
+        XCTAssertEqual(rep.requestCallCount(), 0)
         scope.start()
-        XCTAssertEqual(requestCallCount, 1)
+        XCTAssertEqual(rep.requestCallCount(), 1)
     }
 
     func testStartAllowsEvent() {
-        var subscriptionCallCount = 0
-        var eventCallCount = 0
-        var completionCallCount = 0
-        var cancelCallCount = 0
-        var requestCallCount = 0
-        let testSubject = CurrentValueSubject<TestEvent, Error>(.state)
-            .handleEvents { subscription in
-                subscriptionCallCount += 1
-            } receiveOutput: { event in
-                eventCallCount += 1
-            } receiveCompletion: { completion in
-                completionCallCount += 1
-            } receiveCancel: {
-                cancelCallCount += 1
-            } receiveRequest: { request in
-                requestCallCount += 1
-            }
-
-        let scope = ScopeEventReporter(eventPublisher: testSubject.eraseToAnyPublisher())
-        XCTAssertEqual(eventCallCount, 0)
+        let rep = reportingPublisher()
+        let scope = ScopeEventReporter(eventPublisher: rep.publisher)
+        XCTAssertEqual(rep.eventCallCount(), 0)
         scope.start()
-        XCTAssertEqual(eventCallCount, 1)
+        XCTAssertEqual(rep.eventCallCount(), 1)
     }
 
     func testSuspendTriggersCancel() {
-        var subscriptionCallCount = 0
-        var eventCallCount = 0
-        var completionCallCount = 0
-        var cancelCallCount = 0
-        var requestCallCount = 0
-        let testSubject = CurrentValueSubject<TestEvent, Error>(.state)
-            .handleEvents { subscription in
-                subscriptionCallCount += 1
-            } receiveOutput: { event in
-                eventCallCount += 1
-            } receiveCompletion: { completion in
-                completionCallCount += 1
-            } receiveCancel: {
-                cancelCallCount += 1
-            } receiveRequest: { request in
-                requestCallCount += 1
-            }
-
-        let scope = ScopeEventReporter(eventPublisher: testSubject.eraseToAnyPublisher())
+        let rep = reportingPublisher()
+        let scope = ScopeEventReporter(eventPublisher: rep.publisher)
         scope.start()
-        XCTAssertEqual(cancelCallCount, 0)
+        XCTAssertEqual(rep.cancelCallCount(), 0)
         scope.suspend()
-        XCTAssertEqual(cancelCallCount, 1)
+        XCTAssertEqual(rep.cancelCallCount(), 1)
     }
 
     func testEndTriggersCancel() {
-        var subscriptionCallCount = 0
-        var eventCallCount = 0
-        var completionCallCount = 0
-        var cancelCallCount = 0
-        var requestCallCount = 0
-        let testSubject = CurrentValueSubject<TestEvent, Error>(.state)
-            .handleEvents { subscription in
-                subscriptionCallCount += 1
-            } receiveOutput: { event in
-                eventCallCount += 1
-            } receiveCompletion: { completion in
-                completionCallCount += 1
-            } receiveCancel: {
-                cancelCallCount += 1
-            } receiveRequest: { request in
-                requestCallCount += 1
-            }
-
-        let scope = ScopeEventReporter(eventPublisher: testSubject.eraseToAnyPublisher())
+        let rep = reportingPublisher()
+        let scope = ScopeEventReporter(eventPublisher: rep.publisher)
         scope.start()
-        XCTAssertEqual(cancelCallCount, 0)
+        XCTAssertEqual(rep.cancelCallCount(), 0)
         scope.end()
-        XCTAssertEqual(cancelCallCount, 1)
-    }
-
-    func testEndTriggersCompletion() {
-        var subscriptionCallCount = 0
-        var eventCallCount = 0
-        var completionCallCount = 0
-        var cancelCallCount = 0
-        var requestCallCount = 0
-        let testSubject = CurrentValueSubject<TestEvent, Error>(.state)
-            .handleEvents { subscription in
-                subscriptionCallCount += 1
-            } receiveOutput: { event in
-                eventCallCount += 1
-            } receiveCompletion: { completion in
-                completionCallCount += 1
-            } receiveCancel: {
-                cancelCallCount += 1
-            } receiveRequest: { request in
-                requestCallCount += 1
-            }
-
-        let scope = ScopeEventReporter(eventPublisher: testSubject.eraseToAnyPublisher())
-        scope.start()
-        XCTAssertEqual(completionCallCount, 0)
-        scope.end()
-        XCTAssertEqual(completionCallCount, 1)
+        XCTAssertEqual(rep.cancelCallCount(), 1)
     }
 
 }
 
 enum TestEvent {
     case state
+}
+
+
+
+func reportingPublisher() -> (
+    subject: CurrentValueSubject<TestEvent, Error>,
+    publisher: AnyPublisher<TestEvent, Error>,
+    subscriptionCallCount: () -> Int,
+    eventCallCount: () -> Int,
+    completionCallCount: () -> Int,
+    cancelCallCount: () -> Int,
+    requestCallCount: () -> Int
+) {
+    var subscriptionCallCount = 0
+    var eventCallCount = 0
+    var completionCallCount = 0
+    var cancelCallCount = 0
+    var requestCallCount = 0
+    let subject = CurrentValueSubject<TestEvent, Error>(.state)
+    let publisher = subject.handleEvents { subscription in
+        subscriptionCallCount += 1
+    } receiveOutput: { event in
+        eventCallCount += 1
+    } receiveCompletion: { completion in
+        completionCallCount += 1
+    } receiveCancel: {
+        cancelCallCount += 1
+    } receiveRequest: { request in
+        requestCallCount += 1
+    }.eraseToAnyPublisher()
+    return (
+        subject,
+        publisher,
+        { subscriptionCallCount },
+        { eventCallCount },
+        { completionCallCount },
+        { cancelCallCount },
+        { requestCallCount }
+    )
 }
 
 class ScopeEventReporter: Scope {
@@ -377,7 +305,11 @@ class ScopeEventReporter: Scope {
         willStartCallback?(willStartCallCount)
         return CancelBag {
             eventPublisher
-                .sink(receiveCompletion: {_ in}, receiveValue: {_ in})
+                .sink(receiveCompletion: {_ in
+                    print("compl")
+                }, receiveValue: {_ in
+                    print("v")
+                })
         }
     }
 
