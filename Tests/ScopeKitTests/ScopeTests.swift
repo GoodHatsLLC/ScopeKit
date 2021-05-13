@@ -176,7 +176,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testStartCallsWillStart() {
-        let scope = ScopeEventReporter()
+        let scope = ReportingScope()
         scope.attach(to: activeRoot)
         XCTAssertEqual(scope.willStartCount, 0)
         scope.start()
@@ -184,7 +184,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testStopCallsWillStopOnlyIfPreviouslyStarted() {
-        let scope = ScopeEventReporter()
+        let scope = ReportingScope()
         scope.attach(to: activeRoot)
         scope.stop()
         XCTAssertEqual(scope.willStopCount, 0)
@@ -194,7 +194,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testEndCallsWillEnd() {
-        let scope = ScopeEventReporter()
+        let scope = ReportingScope()
         scope.attach(to: activeRoot)
         XCTAssertEqual(scope.willEndCount, 0)
         scope.end()
@@ -202,7 +202,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testStartAfterEndDoesNotFire() {
-        let scope = ScopeEventReporter()
+        let scope = ReportingScope()
         scope.attach(to: activeRoot)
         scope.end()
         scope.start()
@@ -211,7 +211,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testStartTriggersSubscription() {
         let rep = reportingPublisher(TestEvent.state)
-        let scope = ScopeEventReporter(eventPublisher: rep.publisher)
+        let scope = ReportingScope(eventPublisher: rep.publisher)
         scope.attach(to: activeRoot)
         XCTAssertEqual(rep.subscriptionCallCount(), 0)
         scope.start()
@@ -220,7 +220,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testStartTriggersRequest() {
         let rep = reportingPublisher(TestEvent.state)
-        let scope = ScopeEventReporter(eventPublisher: rep.publisher)
+        let scope = ReportingScope(eventPublisher: rep.publisher)
         scope.attach(to: activeRoot)
         XCTAssertEqual(rep.requestCallCount(), 0)
         scope.start()
@@ -229,7 +229,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testStartAllowsEvent() {
         let rep = reportingPublisher(TestEvent.state)
-        let scope = ScopeEventReporter(eventPublisher: rep.publisher)
+        let scope = ReportingScope(eventPublisher: rep.publisher)
         scope.attach(to: activeRoot)
         XCTAssertEqual(rep.eventCallCount(), 0)
         scope.start()
@@ -238,7 +238,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testStopTriggersCancel() {
         let rep = reportingPublisher(TestEvent.state)
-        let scope = ScopeEventReporter(eventPublisher: rep.publisher)
+        let scope = ReportingScope(eventPublisher: rep.publisher)
         scope.attach(to: activeRoot)
         scope.start()
         XCTAssertEqual(rep.cancelCallCount(), 0)
@@ -248,7 +248,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testEndTriggersCancel() {
         let rep = reportingPublisher(TestEvent.state)
-        let scope = ScopeEventReporter(eventPublisher: rep.publisher)
+        let scope = ReportingScope(eventPublisher: rep.publisher)
         scope.attach(to: activeRoot)
         scope.start()
         XCTAssertEqual(rep.cancelCallCount(), 0)
@@ -256,15 +256,30 @@ final class DependencyKitTests: XCTestCase {
         XCTAssertEqual(rep.cancelCallCount(), 1)
     }
 
+    func testAttachInsufficientToStart() {
+        let scope = ReportingScope()
+        scope.attach(to: activeRoot)
+        XCTAssertEqual(scope.willStartCount, 0)
+    }
+
+    func testStartedAttachStarts() {
+        let scope = ReportingScope()
+        scope.start()
+        XCTAssertEqual(scope.willStartCount, 0)
+        scope.attach(to: activeRoot)
+        XCTAssertEqual(scope.willStartCount, 1)
+    }
+
+
     func testWillStartCascadeBeginsAtSuperscope() {
         var superscopeStarted = false
         var subscopeStarted = false
-        let superscope = LifecycleCallbackScope(start: {
+        let superscope = ReportingScope(start: {
             XCTAssert(!subscopeStarted)
             superscopeStarted = true
         })
         superscope.start()
-        let subscope = LifecycleCallbackScope(start: {
+        let subscope = ReportingScope(start: {
             XCTAssert(superscopeStarted)
             subscopeStarted = true
         })
@@ -360,21 +375,30 @@ extension Scope {
     }
 }
 
-final class ScopeEventReporter: Scope {
+final class ReportingScope: Scope {
 
+    private let start: (() -> ())?
+    private let stop: (() -> ())?
+    private let end: (() -> ())?
+    private let eventPublisher: AnyPublisher<TestEvent, Error>
     var willStartCount = 0
     var willStopCount = 0
     var willEndCount = 0
 
-    private let eventPublisher: AnyPublisher<TestEvent, Error>
-
-    required init(
-        eventPublisher: AnyPublisher<TestEvent, Error> = Empty<TestEvent, Error>().eraseToAnyPublisher()
+    init(
+        eventPublisher: AnyPublisher<TestEvent, Error> = Empty<TestEvent, Error>().eraseToAnyPublisher(),
+        start: (() -> ())? = nil,
+        stop:  (() -> ())? = nil,
+        end:  (() -> ())? = nil
     ) {
+        self.start = start
+        self.stop = stop
+        self.end = end
         self.eventPublisher = eventPublisher
     }
 
     override func willStart() -> CancelBag {
+        start()
         willStartCount += 1
         return CancelBag {
             eventPublisher
@@ -383,40 +407,12 @@ final class ScopeEventReporter: Scope {
     }
 
     override func willStop() {
+        stop()
         willStopCount += 1
     }
 
     override func willEnd() {
-        willEndCount += 1
-    }
-}
-
-final class LifecycleCallbackScope: Scope {
-
-    private let start: (() -> ())?
-    private let stop: (() -> ())?
-    private let end: (() -> ())?
-
-    init(
-        start: (() -> ())? = nil,
-        stop:  (() -> ())? = nil,
-        end:  (() -> ())? = nil
-    ) {
-        self.start = start
-        self.stop = stop
-        self.end = end
-    }
-
-    override func willStart() -> CancelBag {
-        start()
-        return CancelBag()
-    }
-
-    override func willStop() {
-        stop()
-    }
-
-    override func willEnd() {
         end()
+        willEndCount += 1
     }
 }
