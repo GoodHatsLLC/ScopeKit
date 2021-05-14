@@ -35,7 +35,7 @@ private struct ScopeScan {
     let curr: Weak<ScopeBase>
 }
 
-private struct ActiveScan: Equatable {
+private struct ActiveScan {
     let last: Bool
     let curr: Bool
 }
@@ -93,7 +93,7 @@ open class Scope: ScopeBase {
             .eraseToAnyPublisher()
     }
 
-    required public override init() {
+    override init() {
         super.init()
         subscribeToLifecycle()
     }

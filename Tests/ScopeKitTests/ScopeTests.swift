@@ -383,7 +383,7 @@ final class ReportingScope: Scope {
     var willStopCount = 0
     var willEndCount = 0
 
-    init(
+    required init(
         eventPublisher: AnyPublisher<TestEvent, Error> = Empty<TestEvent, Error>().eraseToAnyPublisher(),
         start: (() -> ())? = nil,
         stop:  (() -> ())? = nil,
