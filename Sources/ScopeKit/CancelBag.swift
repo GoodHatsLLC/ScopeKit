@@ -31,23 +31,23 @@ public extension CancelBag {
 }
 
 @resultBuilder
-struct CancelBagBuilder {
-    static func buildBlock(_ bags: CancelBag...) -> [AnyCancellable] {
+public struct CancelBagBuilder {
+    public static func buildBlock(_ bags: CancelBag...) -> [AnyCancellable] {
         bags.flatMap { $0.cancellables }
     }
-    static func buildArray(_ bags: [CancelBag]) -> [AnyCancellable] {
+    public static func buildArray(_ bags: [CancelBag]) -> [AnyCancellable] {
         bags.flatMap { $0.cancellables }
     }
-    static func buildOptional(_ bags: CancelBag?) -> [AnyCancellable] {
+    public static func buildOptional(_ bags: CancelBag?) -> [AnyCancellable] {
         bags.map { $0.cancellables.map{$0} } ?? []
     }
-    static func buildBlock(_ cancellables: AnyCancellable...) -> [AnyCancellable] {
+    public static func buildBlock(_ cancellables: AnyCancellable...) -> [AnyCancellable] {
         cancellables
     }
-    static func buildArray(_ cancellables: [AnyCancellable]) -> [AnyCancellable] {
+    public static func buildArray(_ cancellables: [AnyCancellable]) -> [AnyCancellable] {
         cancellables
     }
-    static func buildOptional(_ cancelleble: AnyCancellable?) -> [AnyCancellable] {
+    public static func buildOptional(_ cancelleble: AnyCancellable?) -> [AnyCancellable] {
         cancelleble.map { [$0] } ?? []
     }
 }

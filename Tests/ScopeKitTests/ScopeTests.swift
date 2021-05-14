@@ -2,11 +2,22 @@ import Combine
 import XCTest
 @testable import ScopeKit
 
+
+extension Scope {
+    var isSyncActive: Bool {
+        var isSyncActive = false
+        isActivePublisher.sink {
+            isSyncActive = $0
+        }.store(in: testBag)
+        return isSyncActive
+    }
+}
+
 private let testBag = CancelBag()
 
 final class DependencyKitTests: XCTestCase {
 
-    private let activeRoot = AlwaysActiveScope()
+    private let root = ScopeHost()
 
     override func setUp() {
     }
@@ -17,7 +28,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testActivation() {
         let scope = Scope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         XCTAssert(!scope.isSyncActive)
         scope.enable()
         XCTAssert(scope.isSyncActive)
@@ -26,51 +37,51 @@ final class DependencyKitTests: XCTestCase {
     func testAttachmentUpdatesSubjects() {
         let scope = Scope()
         XCTAssertNil(scope.superscopeSubject.value.get())
-        XCTAssertNil(activeRoot.subscopesSubject.value.first)
-        scope.attach(to: activeRoot)
-        XCTAssert(scope.superscopeSubject.value.get() === activeRoot)
-        XCTAssert(activeRoot.subscopesSubject.value.first === scope)
+        XCTAssertNil(root.subscopesSubject.value.first)
+        scope.attach(to: root)
+        XCTAssert(scope.superscopeSubject.value.get() === root)
+        XCTAssert(root.subscopesSubject.value.first === scope)
     }
 
     func testMultipleSubscopeAttatchmentAndOrdering() {
         let subscopes = [Scope(), Scope(), Scope()]
-        XCTAssertEqual(activeRoot.subscopesSubject.value.count, 0)
+        XCTAssertEqual(root.subscopesSubject.value.count, 0)
         XCTAssert(
             subscopes
                 .map(\.superscopeSubject.value)
                 .allSatisfy { $0.get() === nil}
         )
         subscopes.forEach {
-            $0.attach(to: activeRoot)
+            $0.attach(to: root)
         }
-        XCTAssertEqual(activeRoot.subscopesSubject.value.count, subscopes.count)
+        XCTAssertEqual(root.subscopesSubject.value.count, subscopes.count)
         XCTAssert(
             // This asserts order is maintained
-            zip(activeRoot.subscopesSubject.value, subscopes)
+            zip(root.subscopesSubject.value, subscopes)
                 .map(===)
                 .reduce(true) { $0 && $1 }
         )
         XCTAssert(
             subscopes
                 .map(\.superscopeSubject.value)
-                .allSatisfy { $0.get() === activeRoot}
+                .allSatisfy { $0.get() === root}
         )
     }
 
     func testDetatchmentUpdatesSubjects() {
         let scope = Scope()
-        scope.attach(to: activeRoot)
-        XCTAssert(scope.superscopeSubject.value.get() === activeRoot)
-        XCTAssert(activeRoot.subscopesSubject.value.first === scope)
+        scope.attach(to: root)
+        XCTAssert(scope.superscopeSubject.value.get() === root)
+        XCTAssert(root.subscopesSubject.value.first === scope)
         scope.detach()
         XCTAssertNil(scope.superscopeSubject.value.get())
-        XCTAssertNil(activeRoot.subscopesSubject.value.first)
+        XCTAssertNil(root.subscopesSubject.value.first)
     }
 
     func testAttachmentPreventsRelease() {
         var scope: Scope? = Scope()
         weak var weakSubscope = scope!
-        scope?.attach(to: activeRoot)
+        scope?.attach(to: root)
         scope = nil
         XCTAssertNotNil(weakSubscope)
     }
@@ -96,7 +107,7 @@ final class DependencyKitTests: XCTestCase {
     func testDetachmentTriggersRelease() {
         var subscope: Scope? = Scope()
         weak var weakSubscope = subscope
-        subscope!.attach(to: activeRoot)
+        subscope!.attach(to: root)
         subscope = nil
         XCTAssertNotNil(weakSubscope)
         weakSubscope?.detach()
@@ -105,7 +116,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testActivationUpdatesSubscope() {
         let scope = Scope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         XCTAssert(!scope.isSyncActive)
         scope.enable()
         XCTAssert(scope.isSyncActive)
@@ -114,7 +125,7 @@ final class DependencyKitTests: XCTestCase {
     func testActivationUpdatesSubscopesRecursively() {
         let scope = Scope()
         let subscope = Scope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         subscope.attach(to: scope)
         subscope.enable()
         XCTAssert(!subscope.isSyncActive)
@@ -124,7 +135,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testActivationUpdatesMultipleSubscopes() {
         let scope = Scope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         let subscopes = [Scope(), Scope(), Scope()]
         subscopes.forEach {
             $0.enable()
@@ -145,7 +156,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testAttachmentToInactiveScopeDoesNotActivateScopes() {
         let scope = Scope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         let subscope = Scope()
         subscope.enable()
         XCTAssert(!subscope.isSyncActive)
@@ -155,7 +166,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testAttachmentToActiveScopeActivatesSubscope() {
         let scope = Scope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         scope.enable()
         let subscope = Scope()
         subscope.enable()
@@ -167,7 +178,7 @@ final class DependencyKitTests: XCTestCase {
     func testDetatchmentStopsScope() {
         let subscope = Scope()
         subscope.enable()
-        subscope.attach(to: activeRoot)
+        subscope.attach(to: root)
         XCTAssert(subscope.isSyncActive)
         subscope.detach()
         XCTAssert(!subscope.isSyncActive)
@@ -175,7 +186,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testStartCallsWillStart() {
         let scope = ReportingScope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         XCTAssertEqual(scope.willStartCount, 0)
         scope.enable()
         XCTAssertEqual(scope.willStartCount, 1)
@@ -183,7 +194,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testStopCallsWillStopOnlyIfPreviouslyStarted() {
         let scope = ReportingScope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         scope.disable()
         XCTAssertEqual(scope.willStopCount, 0)
         scope.enable()
@@ -193,7 +204,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testEndCallsWillEnd() {
         let scope = ReportingScope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         XCTAssertEqual(scope.willEndCount, 0)
         scope.dispose()
         XCTAssertEqual(scope.willEndCount, 1)
@@ -201,43 +212,43 @@ final class DependencyKitTests: XCTestCase {
 
     func testStartAfterEndDoesNotFire() {
         let scope = ReportingScope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         scope.dispose()
         scope.enable()
         XCTAssertEqual(scope.willStartCount, 0)
     }
 
     func testStartTriggersSubscription() {
-        let rep = reportingPublisher(TestEvent.state)
+        let rep = reportingPublisher(ReportingTestEvent.state)
         let scope = ReportingScope(eventPublisher: rep.publisher)
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         XCTAssertEqual(rep.subscriptionCallCount(), 0)
         scope.enable()
         XCTAssertEqual(rep.subscriptionCallCount(), 1)
     }
 
     func testStartTriggersRequest() {
-        let rep = reportingPublisher(TestEvent.state)
+        let rep = reportingPublisher(ReportingTestEvent.state)
         let scope = ReportingScope(eventPublisher: rep.publisher)
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         XCTAssertEqual(rep.requestCallCount(), 0)
         scope.enable()
         XCTAssertEqual(rep.requestCallCount(), 1)
     }
 
     func testStartAllowsEvent() {
-        let rep = reportingPublisher(TestEvent.state)
+        let rep = reportingPublisher(ReportingTestEvent.state)
         let scope = ReportingScope(eventPublisher: rep.publisher)
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         XCTAssertEqual(rep.eventCallCount(), 0)
         scope.enable()
         XCTAssertEqual(rep.eventCallCount(), 1)
     }
 
     func testStopTriggersCancel() {
-        let rep = reportingPublisher(TestEvent.state)
+        let rep = reportingPublisher(ReportingTestEvent.state)
         let scope = ReportingScope(eventPublisher: rep.publisher)
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         scope.enable()
         XCTAssertEqual(rep.cancelCallCount(), 0)
         scope.disable()
@@ -245,9 +256,9 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testEndTriggersCancel() {
-        let rep = reportingPublisher(TestEvent.state)
+        let rep = reportingPublisher(ReportingTestEvent.state)
         let scope = ReportingScope(eventPublisher: rep.publisher)
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         scope.enable()
         XCTAssertEqual(rep.cancelCallCount(), 0)
         scope.dispose()
@@ -256,7 +267,7 @@ final class DependencyKitTests: XCTestCase {
 
     func testAttachInsufficientToStart() {
         let scope = ReportingScope()
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         XCTAssertEqual(scope.willStartCount, 0)
     }
 
@@ -264,7 +275,7 @@ final class DependencyKitTests: XCTestCase {
         let scope = ReportingScope()
         scope.enable()
         XCTAssertEqual(scope.willStartCount, 0)
-        scope.attach(to: activeRoot)
+        scope.attach(to: root)
         XCTAssertEqual(scope.willStartCount, 1)
     }
 
@@ -286,7 +297,7 @@ final class DependencyKitTests: XCTestCase {
         XCTAssert(!superscopeStarted)
         XCTAssert(!subscopeStarted)
         XCTAssert(!subscope.isSyncActive)
-        superscope.attach(to: activeRoot)
+        superscope.attach(to: root)
         XCTAssert(subscope.isSyncActive)
         XCTAssert(superscopeStarted)
         XCTAssert(subscopeStarted)
@@ -299,7 +310,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testCompletionCascadeBeginsAtSuperscope() {
-        let subject = CurrentValueSubject<TestEvent, Error>(.state)
+        let subject = CurrentValueSubject<ReportingTestEvent, Error>(.state)
         let publisher = subject.handleEvents { subscription in
         } receiveOutput: { event in
         } receiveCompletion: { completion in
@@ -309,7 +320,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testCancelCascadeBeginsAtSuperscope() {
-        let subject = CurrentValueSubject<TestEvent, Error>(.state)
+        let subject = CurrentValueSubject<ReportingTestEvent, Error>(.state)
         let publisher = subject.handleEvents { subscription in
         } receiveOutput: { event in
         } receiveCompletion: { completion in
@@ -319,98 +330,4 @@ final class DependencyKitTests: XCTestCase {
     }
 
 
-}
-
-enum TestEvent {
-    case state
-}
-
-func reportingPublisher<Output>(_ initial: Output) ->
-(
-    subject: CurrentValueSubject<Output, Error>,
-    publisher: AnyPublisher<Output, Error>,
-    subscriptionCallCount: () -> Int,
-    eventCallCount: () -> Int,
-    completionCallCount: () -> Int,
-    cancelCallCount: () -> Int,
-    requestCallCount: () -> Int
-) {
-    var subscriptionCallCount = 0
-    var eventCallCount = 0
-    var completionCallCount = 0
-    var cancelCallCount = 0
-    var requestCallCount = 0
-    let subject = CurrentValueSubject<Output, Error>(initial)
-    let publisher = subject.handleEvents { subscription in
-        subscriptionCallCount += 1
-    } receiveOutput: { event in
-        eventCallCount += 1
-    } receiveCompletion: { completion in
-        completionCallCount += 1
-    } receiveCancel: {
-        cancelCallCount += 1
-    } receiveRequest: { request in
-        requestCallCount += 1
-    }.eraseToAnyPublisher()
-    return (
-        subject,
-        publisher,
-        { subscriptionCallCount },
-        { eventCallCount },
-        { completionCallCount },
-        { cancelCallCount },
-        { requestCallCount }
-    )
-}
-
-extension Scope {
-    var isSyncActive: Bool {
-        var isSyncActive = false
-        isActivePublisher.sink {
-            isSyncActive = $0
-        }.store(in: testBag)
-        return isSyncActive
-    }
-}
-
-final class ReportingScope: Scope {
-
-    private let startCallback: (() -> ())?
-    private let stopCallback: (() -> ())?
-    private let endCallback: (() -> ())?
-    private let eventPublisher: AnyPublisher<TestEvent, Error>
-    var willStartCount = 0
-    var willStopCount = 0
-    var willEndCount = 0
-
-    required init(
-        eventPublisher: AnyPublisher<TestEvent, Error> = Empty<TestEvent, Error>().eraseToAnyPublisher(),
-        start: (() -> ())? = nil,
-        stop:  (() -> ())? = nil,
-        end:  (() -> ())? = nil
-    ) {
-        self.startCallback = start
-        self.stopCallback = stop
-        self.endCallback = end
-        self.eventPublisher = eventPublisher
-    }
-
-    override func willStart() -> CancelBag {
-        startCallback?()
-        willStartCount += 1
-        return CancelBag {
-            eventPublisher
-                .sink(receiveCompletion: {_ in }, receiveValue: {_ in })
-        }
-    }
-
-    override func willStop() {
-        stopCallback?()
-        willStopCount += 1
-    }
-
-    override func willEnd() {
-        endCallback?()
-        willEndCount += 1
-    }
 }

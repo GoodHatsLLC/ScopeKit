@@ -2,7 +2,7 @@ import Combine
 import Foundation
 
 
-public final class AlwaysActiveScope: ScopeBase {
+public final class ScopeHost: Owning {
 
     private let isActiveSubject = CurrentValueSubject<Bool, Never>(true)
 
@@ -11,28 +11,30 @@ public final class AlwaysActiveScope: ScopeBase {
     }
 }
 
-open class ScopeBase {
-
+open class StatusPublishing {
     var isActivePublisher: AnyPublisher<Bool, Never> {
         Just(false).eraseToAnyPublisher()
     }
+}
+
+open class Owning: StatusPublishing {
 
     // only for retaining
-    let subscopesSubject = CurrentValueSubject<[ScopeBase], Never>([])
+    let subscopesSubject = CurrentValueSubject<[Owning], Never>([])
 
-    fileprivate func retain(subscope: ScopeBase) {
+    fileprivate func retain(subscope: Owning) {
         subscopesSubject.value.append(subscope)
     }
 
-    fileprivate func release(subscope: ScopeBase) {
+    fileprivate func release(subscope: Owning) {
         subscopesSubject.value.removeAll { $0 === subscope }
     }
 
 }
 
 private struct ScopeScan {
-    let last: Weak<ScopeBase>
-    let curr: Weak<ScopeBase>
+    let last: Weak<Owning>
+    let curr: Weak<Owning>
 }
 
 private struct ActiveScan {
@@ -41,7 +43,7 @@ private struct ActiveScan {
 }
 
 // MARK: Scope
-open class Scope: ScopeBase {
+open class Scope: Owning {
 
     private var lifecycleBag = CancelBag()
     fileprivate var workBag = CancelBag()
@@ -51,8 +53,8 @@ open class Scope: ScopeBase {
         selfAllowsActiveSubject
             .eraseToAnyPublisher()
     }
-    let superscopeSubject = CurrentValueSubject<Weak<ScopeBase>, Never>(Weak(nil))
-    var superscopePublisher: AnyPublisher<Weak<ScopeBase>, Never> {
+    let superscopeSubject = CurrentValueSubject<Weak<Owning>, Never>(Weak(nil))
+    var superscopePublisher: AnyPublisher<Weak<Owning>, Never> {
         superscopeSubject
             .eraseToAnyPublisher()
     }
@@ -175,7 +177,7 @@ open class Scope: ScopeBase {
     }
 
     /// Bind the Scope's lifecycle to the passed Scope as a subscope.
-    public func attach(to superscope: ScopeBase) {
+    public func attach(to superscope: Owning) {
         superscopeSubject.send(Weak(superscope))
     }
 
