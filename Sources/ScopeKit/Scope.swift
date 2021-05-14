@@ -82,7 +82,6 @@ open class Scope: ScopeBase {
             .eraseToAnyPublisher()
     }
 
-    // External
     override var isActivePublisher: AnyPublisher<Bool, Never> {
         externalIsActiveSubject
             .eraseToAnyPublisher()
@@ -94,7 +93,7 @@ open class Scope: ScopeBase {
             .eraseToAnyPublisher()
     }
 
-    override init() {
+    required public override init() {
         super.init()
         subscribeToLifecycle()
     }
