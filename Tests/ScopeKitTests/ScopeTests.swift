@@ -2,7 +2,6 @@ import Combine
 import XCTest
 @testable import ScopeKit
 
-
 extension Scope {
     var isSyncActive: Bool {
         var isSyncActive = false
