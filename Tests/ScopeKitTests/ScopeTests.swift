@@ -109,6 +109,28 @@ final class DependencyKitTests: XCTestCase {
         XCTAssertNil(weakSubscope)
     }
 
+    func testDetachmentTriggersReleaseOfChain() {
+        var scope: Scope? = Scope()
+        var subscopescope: Scope? = Scope()
+        var descendantScope: Scope? = Scope()
+        weak var weakScope = scope
+        weak var weakSubscope = subscopescope
+        weak var weakDescendantScope = descendantScope
+        scope!.attach(to: root)
+        subscopescope!.attach(to: scope!)
+        weakDescendantScope!.attach(to: subscopescope!)
+        scope = nil
+        subscopescope = nil
+        descendantScope = nil
+        XCTAssertNotNil(weakScope)
+        XCTAssertNotNil(weakSubscope)
+        XCTAssertNotNil(weakDescendantScope)
+        weakScope?.detach()
+        XCTAssertNil(weakScope)
+        XCTAssertNil(weakSubscope)
+        XCTAssertNil(weakDescendantScope)
+    }
+
     func testChangedSuperscopeRetains() {
         let root2 = ScopeHost()
         var subscope: Scope? = Scope()
