@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-
+// TODO: refactor to remove superclass
 final class ScopeHost: Scope {
     private let alwaysEnabledSubject = CurrentValueSubject<Bool, Never>(true)
     override var isActivePublisher: AnyPublisher<Bool, Never> {
@@ -15,19 +15,22 @@ open class Scope {
     private var lifecycleBag = CancelBag()
     fileprivate var workBag = CancelBag()
 
-    let internalIsEnabledSubject = CurrentValueSubject<Bool, Never>(false)
+    private let internalIsEnabledSubject = CurrentValueSubject<Bool, Never>(false)
 
-    var internalIsEnabledPublisher: AnyPublisher<Bool, Never> {
+    private var internalIsEnabledPublisher: AnyPublisher<Bool, Never> {
         internalIsEnabledSubject.eraseToAnyPublisher()
     }
 
+    // Internal for testing
     let subscopesSubject = CurrentValueSubject<[Scope], Never>([])
 
+    // Internal for testing
     let externalIsActiveSubject = CurrentValueSubject<Bool, Never>(false)
     var isActivePublisher: AnyPublisher<Bool, Never> {
         externalIsActiveSubject.eraseToAnyPublisher()
     }
 
+    // Internal for testing
     let superscopeSubject = CurrentValueSubject<Weak<Scope>, Never>(Weak(nil))
     private var superScopeIsEnabledPublisher: AnyPublisher<Bool, Never> {
         superscopeSubject
