@@ -2,12 +2,6 @@ import Combine
 import XCTest
 @testable import ScopeKit
 
-extension Scope {
-    var isSyncActive: Bool {
-        externalIsEnabledSubject.value
-    }
-}
-
 private let testBag = CancelBag()
 
 final class DependencyKitTests: XCTestCase {
@@ -24,9 +18,9 @@ final class DependencyKitTests: XCTestCase {
     func testActivation() {
         let scope = Scope()
         scope.attach(to: root)
-        XCTAssert(!scope.isSyncActive)
+        XCTAssert(!scope.externalIsEnabledSubject.value)
         scope.enable()
-        XCTAssert(scope.isSyncActive)
+        XCTAssert(scope.externalIsEnabledSubject.value)
     }
 
     func testAttachmentUpdatesSubjects() {
@@ -159,12 +153,24 @@ final class DependencyKitTests: XCTestCase {
         XCTAssertEqual(subscope.willStopCount, 1)
     }
 
+    func testNewSuperscopeRemovesPreviousSuperscopeChild() {
+        let oldSuperscope = Scope()
+        let subscope = Scope()
+        let newSuperscope = Scope()
+        oldSuperscope.attach(to: root)
+        newSuperscope.attach(to: root)
+        subscope.attach(to: oldSuperscope)
+        XCTAssert(oldSuperscope.subscopesSubject.value.first === subscope)
+        subscope.attach(to: newSuperscope)
+        XCTAssertNil(oldSuperscope.subscopesSubject.value.first)
+    }
+
     func testActivationUpdatesSubscope() {
         let scope = Scope()
         scope.attach(to: root)
-        XCTAssert(!scope.isSyncActive)
+        XCTAssert(!scope.externalIsEnabledSubject.value)
         scope.enable()
-        XCTAssert(scope.isSyncActive)
+        XCTAssert(scope.externalIsEnabledSubject.value)
     }
 
     func testActivationUpdatesSubscopesRecursively() {
@@ -173,9 +179,9 @@ final class DependencyKitTests: XCTestCase {
         scope.attach(to: root)
         subscope.attach(to: scope)
         subscope.enable()
-        XCTAssert(!subscope.isSyncActive)
+        XCTAssert(!subscope.externalIsEnabledSubject.value)
         scope.enable()
-        XCTAssert(subscope.isSyncActive)
+        XCTAssert(subscope.externalIsEnabledSubject.value)
     }
 
     func testActivationUpdatesMultipleSubscopes() {
@@ -188,13 +194,13 @@ final class DependencyKitTests: XCTestCase {
         }
         XCTAssert(
             !subscopes
-                .map(\.isSyncActive)
+                .map(\.externalIsEnabledSubject.value)
                 .reduce(false) { $0 || $1 }
         )
         scope.enable()
         XCTAssert(
             subscopes
-                .map(\.isSyncActive)
+                .map(\.externalIsEnabledSubject.value)
                 .reduce(true) { $0 && $1 }
         )
     }
@@ -204,9 +210,9 @@ final class DependencyKitTests: XCTestCase {
         scope.attach(to: root)
         let subscope = Scope()
         subscope.enable()
-        XCTAssert(!subscope.isSyncActive)
+        XCTAssert(!subscope.externalIsEnabledSubject.value)
         subscope.attach(to: scope)
-        XCTAssert(!subscope.isSyncActive)
+        XCTAssert(!subscope.externalIsEnabledSubject.value)
     }
 
     func testAttachmentToActiveScopeActivatesSubscope() {
@@ -215,18 +221,18 @@ final class DependencyKitTests: XCTestCase {
         scope.enable()
         let subscope = Scope()
         subscope.enable()
-        XCTAssert(!subscope.isSyncActive)
+        XCTAssert(!subscope.externalIsEnabledSubject.value)
         subscope.attach(to: scope)
-        XCTAssert(subscope.isSyncActive)
+        XCTAssert(subscope.externalIsEnabledSubject.value)
     }
 
     func testDetatchmentStopsScope() {
         let subscope = Scope()
         subscope.enable()
         subscope.attach(to: root)
-        XCTAssert(subscope.isSyncActive)
+        XCTAssert(subscope.externalIsEnabledSubject.value)
         subscope.detach()
-        XCTAssert(!subscope.isSyncActive)
+        XCTAssert(!subscope.externalIsEnabledSubject.value)
     }
 
     func testStartCallsWillStart() {
@@ -315,9 +321,9 @@ final class DependencyKitTests: XCTestCase {
         subscope.attach(to: superscope)
         XCTAssert(!superscopeStarted)
         XCTAssert(!subscopeStarted)
-        XCTAssert(!subscope.isSyncActive)
+        XCTAssert(!subscope.externalIsEnabledSubject.value)
         superscope.attach(to: root)
-        XCTAssert(subscope.isSyncActive)
+        XCTAssert(subscope.externalIsEnabledSubject.value)
         XCTAssert(superscopeStarted)
         XCTAssert(subscopeStarted)
     }
@@ -341,9 +347,9 @@ final class DependencyKitTests: XCTestCase {
 
         XCTAssert(!superscopeStopped)
         XCTAssert(!subscopeStopped)
-        XCTAssert(subscope.isSyncActive)
+        XCTAssert(subscope.externalIsEnabledSubject.value)
         superscope.disable()
-        XCTAssert(!subscope.isSyncActive)
+        XCTAssert(!subscope.externalIsEnabledSubject.value)
         XCTAssert(subscopeStopped)
         XCTAssert(superscopeStopped)
     }
