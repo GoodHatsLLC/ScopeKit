@@ -2,8 +2,6 @@ import Combine
 import XCTest
 @testable import ScopeKit
 
-private let testBag = CancelBag()
-
 final class DependencyKitTests: XCTestCase {
 
     private let root = ScopeRoot()
@@ -12,7 +10,6 @@ final class DependencyKitTests: XCTestCase {
     }
 
     override func tearDown() {
-        testBag.cancel()
     }
 
     func testActivation() {
