@@ -1,54 +1,19 @@
 import Combine
 import Foundation
 
-// TODO: refactor to remove superclass
-final class ScopeHost: Scope {
-    private let alwaysEnabledSubject = CurrentValueSubject<Bool, Never>(true)
-    override var isActivePublisher: AnyPublisher<Bool, Never> {
-        alwaysEnabledSubject.eraseToAnyPublisher()
-    }
-}
+open class ScopeOwning {
 
-// MARK: Scope
-open class Scope {
+    fileprivate let lifecycleBag = CancelBag()
 
-    private var lifecycleBag = CancelBag()
-    fileprivate var workBag = CancelBag()
+    // internal for testing
+    let subscopesSubject = CurrentValueSubject<[ScopeOwning], Never>([])
 
-    private let internalIsEnabledSubject = CurrentValueSubject<Bool, Never>(false)
-
-    private var internalIsEnabledPublisher: AnyPublisher<Bool, Never> {
-        internalIsEnabledSubject.eraseToAnyPublisher()
-    }
-
-    // Internal for testing
-    let subscopesSubject = CurrentValueSubject<[Scope], Never>([])
-
-    // Internal for testing
-    let externalIsActiveSubject = CurrentValueSubject<Bool, Never>(false)
+    // internal for testing
     var isActivePublisher: AnyPublisher<Bool, Never> {
-        externalIsActiveSubject.eraseToAnyPublisher()
+        Just(false).eraseToAnyPublisher()
     }
 
-    // Internal for testing
-    let superscopeSubject = CurrentValueSubject<Weak<Scope>, Never>(Weak(nil))
-    private var superScopeIsEnabledPublisher: AnyPublisher<Bool, Never> {
-        superscopeSubject
-            .map { $0.get()?.isActivePublisher }
-            .replaceNil(with: Just(false).eraseToAnyPublisher())
-            .switchToLatest()
-            .eraseToAnyPublisher()
-    }
-
-    init() {
-        subscribeToLifecycle()
-    }
-
-    deinit {
-        externalIsActiveSubject.send(false)
-    }
-
-    private func remove(subscope: Scope) {
+    fileprivate func remove(subscope: ScopeOwning) {
         subscopesSubject
             .prefix(1)
             .map { $0.filter { $0 !== subscope} }
@@ -58,7 +23,7 @@ open class Scope {
             }.store(in: lifecycleBag)
     }
 
-    private func add(subscope: Scope) {
+    fileprivate func add(subscope: ScopeOwning) {
         subscopesSubject
             .prefix(1)
             .sink { [weak self] subscopes in
@@ -66,12 +31,56 @@ open class Scope {
                 self.subscopesSubject.send(subscopes + [subscope])
             }.store(in: lifecycleBag)
     }
+}
+
+final class ScopeRoot: ScopeOwning {
+    private let alwaysEnabledSubject = CurrentValueSubject<Bool, Never>(true)
+    override var isActivePublisher: AnyPublisher<Bool, Never> {
+        alwaysEnabledSubject.eraseToAnyPublisher()
+    }
+}
+
+// MARK: Scope
+open class Scope: ScopeOwning {
+
+    fileprivate var workBag = CancelBag()
+
+    private let internalIsEnabledSubject = CurrentValueSubject<Bool, Never>(false)
+
+    private var internalIsEnabledPublisher: AnyPublisher<Bool, Never> {
+        internalIsEnabledSubject.eraseToAnyPublisher()
+    }
+
+    // Internal for testing
+    let externalIsActiveSubject = CurrentValueSubject<Bool, Never>(false)
+    override var isActivePublisher: AnyPublisher<Bool, Never> {
+        externalIsActiveSubject.eraseToAnyPublisher()
+    }
+
+    // Internal for testing
+    let superscopeSubject = CurrentValueSubject<Weak<ScopeOwning>, Never>(Weak(nil))
+    private var superScopeIsEnabledPublisher: AnyPublisher<Bool, Never> {
+        superscopeSubject
+            .map { $0.get()?.isActivePublisher }
+            .replaceNil(with: Just(false).eraseToAnyPublisher())
+            .switchToLatest()
+            .eraseToAnyPublisher()
+    }
+
+    override init() {
+        super.init()
+        subscribeToLifecycle()
+    }
+
+    deinit {
+        externalIsActiveSubject.send(false)
+    }
 
     private func subscribeToLifecycle() {
         // Update retentions in super
         superscopeSubject
             .removeDuplicates { $0.get() === $1.get() }
-            .scan((Weak<Scope>(nil), Weak<Scope>(nil))) { ($0.1, $1) }
+            .scan((Weak<ScopeOwning>(nil), Weak<ScopeOwning>(nil))) { ($0.1, $1) }
             .sink { [weak self] (curr, next) in
                 guard let self = self else { return }
                 curr.get()?.remove(subscope: self)
@@ -110,14 +119,14 @@ open class Scope {
     }
 
     /// Bind the Scope's lifecycle to the passed Scope as a subscope.
-    public func attach(to superscope: Scope) {
+    public func attach(to superscope: ScopeOwning) {
         superscopeSubject
             .send(Weak(superscope))
     }
 
     /// Remove the Scope from the lifecycle of its superscope.
     public func detatch() {
-        superscopeSubject.send(Weak<Scope>(nil))
+        superscopeSubject.send(Weak<ScopeOwning>(nil))
     }
 
 

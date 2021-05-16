@@ -6,7 +6,7 @@ private let testBag = CancelBag()
 
 final class DependencyKitTests: XCTestCase {
 
-    private let root = ScopeHost()
+    private let root = ScopeRoot()
 
     override func setUp() {
     }
@@ -126,7 +126,7 @@ final class DependencyKitTests: XCTestCase {
     }
 
     func testChangedSuperscopeRetains() {
-        let root2 = ScopeHost()
+        let root2 = ScopeRoot()
         var subscope: Scope? = Scope()
         weak var weakSubscope = subscope
         subscope!.attach(to: root)
