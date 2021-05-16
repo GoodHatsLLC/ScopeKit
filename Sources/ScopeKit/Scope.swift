@@ -46,13 +46,22 @@ open class Scope {
     }
 
     private func remove(subscope: Scope) {
-        // TODO: sink
-        subscopesSubject.value = subscopesSubject.value.filter { $0 !== subscope }
+        subscopesSubject
+            .prefix(1)
+            .map { $0.filter { $0 !== subscope} }
+            .sink { [weak self] subscopes in
+                guard let self = self else { return }
+                self.subscopesSubject.send(subscopes)
+            }.store(in: lifecycleBag)
     }
 
     private func add(subscope: Scope) {
-        // TODO: sink
-        subscopesSubject.value.append(subscope)
+        subscopesSubject
+            .prefix(1)
+            .sink { [weak self] subscopes in
+                guard let self = self else { return }
+                self.subscopesSubject.send(subscopes + [subscope])
+            }.store(in: lifecycleBag)
     }
 
     private func subscribeToLifecycle() {
