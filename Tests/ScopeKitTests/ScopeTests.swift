@@ -4,11 +4,7 @@ import XCTest
 
 extension Scope {
     var isSyncActive: Bool {
-        var isSyncActive = false
-        isActivePublisher.sink {
-            isSyncActive = $0
-        }.store(in: testBag)
-        return isSyncActive
+        externalIsEnabledSubject.value
     }
 }
 
@@ -113,6 +109,34 @@ final class DependencyKitTests: XCTestCase {
         XCTAssertNil(weakSubscope)
     }
 
+    func testChangedSuperscopeRetains() {
+        let root2 = ScopeHost()
+        var subscope: Scope? = Scope()
+        weak var weakSubscope = subscope
+        subscope!.attach(to: root)
+        subscope = nil
+        XCTAssertNotNil(weakSubscope)
+        weakSubscope?.attach(to: root2)
+        XCTAssertNotNil(weakSubscope)
+    }
+
+    func testNewSuperscopeOwnsLifecycle() {
+        let newSuperscope = Scope()
+        newSuperscope.attach(to: root)
+        newSuperscope.enable()
+        let subscope = ReportingScope()
+        subscope.attach(to: root)
+        subscope.enable()
+        XCTAssertEqual(subscope.willStartCount, 1)
+        XCTAssertEqual(subscope.willStopCount, 0)
+        subscope.attach(to: newSuperscope)
+        XCTAssertEqual(subscope.willStartCount, 1)
+        XCTAssertEqual(subscope.willStopCount, 0)
+        newSuperscope.disable()
+        XCTAssertEqual(subscope.willStartCount, 1)
+        XCTAssertEqual(subscope.willStopCount, 1)
+    }
+
     func testActivationUpdatesSubscope() {
         let scope = Scope()
         scope.attach(to: root)
@@ -201,22 +225,6 @@ final class DependencyKitTests: XCTestCase {
         XCTAssertEqual(scope.willStopCount, 1)
     }
 
-    func testEndCallsWillEnd() {
-        let scope = ReportingScope()
-        scope.attach(to: root)
-        XCTAssertEqual(scope.willEndCount, 0)
-        scope.dispose()
-        XCTAssertEqual(scope.willEndCount, 1)
-    }
-
-    func testStartAfterEndDoesNotFire() {
-        let scope = ReportingScope()
-        scope.attach(to: root)
-        scope.dispose()
-        scope.enable()
-        XCTAssertEqual(scope.willStartCount, 0)
-    }
-
     func testStartTriggersSubscription() {
         let rep = reportingPublisher(ReportingTestEvent.state)
         let scope = ReportingScope(eventPublisher: rep.publisher)
@@ -251,16 +259,6 @@ final class DependencyKitTests: XCTestCase {
         scope.enable()
         XCTAssertEqual(rep.cancelCallCount(), 0)
         scope.disable()
-        XCTAssertEqual(rep.cancelCallCount(), 1)
-    }
-
-    func testEndTriggersCancel() {
-        let rep = reportingPublisher(ReportingTestEvent.state)
-        let scope = ReportingScope(eventPublisher: rep.publisher)
-        scope.attach(to: root)
-        scope.enable()
-        XCTAssertEqual(rep.cancelCallCount(), 0)
-        scope.dispose()
         XCTAssertEqual(rep.cancelCallCount(), 1)
     }
 
@@ -302,31 +300,30 @@ final class DependencyKitTests: XCTestCase {
         XCTAssert(subscopeStarted)
     }
 
-    func testWillSuspendCascadeBeginsAtSubscope() {
-    }
+    func testWillStopCascadeBeginsAtSubscope() {
+        var superscopeStopped = false
+        var subscopeStopped = false
+        let superscope = ReportingScope(stop: {
+            XCTAssert(subscopeStopped)
+            superscopeStopped = true
+        })
+        superscope.enable()
+        let subscope = ReportingScope(stop: {
+            XCTAssert(!superscopeStopped)
+            subscopeStopped = true
+        })
+        subscope.attach(to: superscope)
+        superscope.attach(to: root)
+        subscope.enable()
+        superscope.enable()
 
-    func testWillCompleteCascadeBeginsAtSubscope() {
+        XCTAssert(!superscopeStopped)
+        XCTAssert(!subscopeStopped)
+        XCTAssert(subscope.isSyncActive)
+        superscope.disable()
+        XCTAssert(!subscope.isSyncActive)
+        XCTAssert(subscopeStopped)
+        XCTAssert(superscopeStopped)
     }
-
-    func testCompletionCascadeBeginsAtSuperscope() {
-        let subject = CurrentValueSubject<ReportingTestEvent, Error>(.state)
-        let publisher = subject.handleEvents { subscription in
-        } receiveOutput: { event in
-        } receiveCompletion: { completion in
-        } receiveCancel: {
-        } receiveRequest: { request in
-        }.eraseToAnyPublisher()
-    }
-
-    func testCancelCascadeBeginsAtSuperscope() {
-        let subject = CurrentValueSubject<ReportingTestEvent, Error>(.state)
-        let publisher = subject.handleEvents { subscription in
-        } receiveOutput: { event in
-        } receiveCompletion: { completion in
-        } receiveCancel: {
-        } receiveRequest: { request in
-        }.eraseToAnyPublisher()
-    }
-
 
 }

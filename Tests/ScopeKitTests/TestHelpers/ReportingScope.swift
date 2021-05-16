@@ -41,9 +41,5 @@ final class ReportingScope: Scope {
         willStopCount += 1
     }
 
-    override func willEnd() {
-        endCallback?()
-        willEndCount += 1
-    }
 }
 

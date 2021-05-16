@@ -2,188 +2,108 @@ import Combine
 import Foundation
 
 
-public final class ScopeHost: Owning {
-
-    private let isActiveSubject = CurrentValueSubject<Bool, Never>(true)
-
-    override var isActivePublisher: AnyPublisher<Bool, Never> {
-        isActiveSubject.eraseToAnyPublisher()
+final class ScopeHost: Scope {
+    private let alwaysEnabledSubject = CurrentValueSubject<Bool, Never>(true)
+    override var isEnabledPublisher: AnyPublisher<Bool, Never> {
+        alwaysEnabledSubject.eraseToAnyPublisher()
     }
-}
-
-open class StatusPublishing {
-    var isActivePublisher: AnyPublisher<Bool, Never> {
-        Just(false).eraseToAnyPublisher()
-    }
-}
-
-open class Owning: StatusPublishing {
-
-    // only for retaining
-    let subscopesSubject = CurrentValueSubject<[Owning], Never>([])
-
-    fileprivate func retain(subscope: Owning) {
-        subscopesSubject.value.append(subscope)
-    }
-
-    fileprivate func release(subscope: Owning) {
-        subscopesSubject.value.removeAll { $0 === subscope }
-    }
-
-}
-
-private struct ScopeScan {
-    let last: Weak<Owning>
-    let curr: Weak<Owning>
-}
-
-private struct ActiveScan {
-    let last: Bool
-    let curr: Bool
 }
 
 // MARK: Scope
-open class Scope: Owning {
+open class Scope {
 
     private var lifecycleBag = CancelBag()
     fileprivate var workBag = CancelBag()
 
-    let selfAllowsActiveSubject = CurrentValueSubject<Bool, Never>(false)
-    var selfAllowsActivePublisher: AnyPublisher<Bool, Never> {
-        selfAllowsActiveSubject
-            .eraseToAnyPublisher()
+    let internalIsEnabledSubject = CurrentValueSubject<Bool, Never>(false)
+
+    var internalIsEnabledPublisher: AnyPublisher<Bool, Never> {
+        internalIsEnabledSubject.eraseToAnyPublisher()
     }
-    let superscopeSubject = CurrentValueSubject<Weak<Owning>, Never>(Weak(nil))
-    var superscopePublisher: AnyPublisher<Weak<Owning>, Never> {
+
+    let subscopesSubject = CurrentValueSubject<[Scope], Never>([])
+
+    let externalIsEnabledSubject = CurrentValueSubject<Bool, Never>(false)
+    var isEnabledPublisher: AnyPublisher<Bool, Never> {
+        externalIsEnabledSubject.eraseToAnyPublisher()
+    }
+
+    let superscopeSubject = CurrentValueSubject<Weak<Scope>, Never>(Weak(nil))
+    private var superScopeIsEnabledPublisher: AnyPublisher<Bool, Never> {
         superscopeSubject
-            .eraseToAnyPublisher()
-    }
-
-    private var superIsActivePublisher: AnyPublisher<Bool, Never> {
-        superscopePublisher
-            .map { superscope in
-                superscope.get()?
-                    .isActivePublisher
-                    .map { Optional($0) }
-                    .eraseToAnyPublisher()
-                ?? Just<Bool?>(nil)
-                    .eraseToAnyPublisher()
-            }
+            .map { $0.get()?.isEnabledPublisher }
+            .replaceNil(with: Just(false).eraseToAnyPublisher())
             .switchToLatest()
-            .replaceNil(with: false)
             .eraseToAnyPublisher()
     }
 
-    private let preExternalIsActiveScanSubject = PassthroughSubject<ActiveScan, Never>()
-    private let externalIsActiveSubject = CurrentValueSubject<Bool, Never>(false)
-    private let postExternalIsActiveScanSubject = PassthroughSubject<ActiveScan, Never>()
-
-    private var preExternalIsActivePublisher: AnyPublisher<Bool, Never> {
-        preExternalIsActiveScanSubject
-            .map { $0.curr }
-            .eraseToAnyPublisher()
-    }
-
-    override var isActivePublisher: AnyPublisher<Bool, Never> {
-        externalIsActiveSubject
-            .eraseToAnyPublisher()
-    }
-
-    private var postExternalIsActivePublisher: AnyPublisher<Bool, Never> {
-        postExternalIsActiveScanSubject
-            .map { $0.curr }
-            .eraseToAnyPublisher()
-    }
-
-    override init() {
-        super.init()
+    init() {
         subscribeToLifecycle()
     }
 
+    deinit {
+        externalIsEnabledSubject.send(false)
+    }
+
+    private func remove(subscope: Scope) {
+        // TODO: sink
+        subscopesSubject.value = subscopesSubject.value.filter { $0 !== subscope }
+    }
+
+    private func add(subscope: Scope) {
+        // TODO: sink
+        subscopesSubject.value.append(subscope)
+    }
+
     private func subscribeToLifecycle() {
-        preExternalIsActivePublisher
-            .sink(receiveValue: { [weak self] isActive in
-                guard let self = self else { return }
-                if isActive {
-                    self.willStart()
-                        .store(in: self.workBag)
-                }
-            }).store(in: lifecycleBag)
-
-        postExternalIsActivePublisher
-            .sink(receiveCompletion: { [weak self] _ in
-                guard let self = self else { return }
-                self.willEnd()
-                self.workBag.cancel()
-                self.lifecycleBag.cancel()
-            }, receiveValue: { [weak self] isActive in
-                guard let self = self else { return }
-                if !isActive {
-                    self.willStop()
-                    self.workBag.cancel()
-                }
-            }).store(in: lifecycleBag)
-
-        superscopePublisher
+        // Update retentions in super
+        superscopeSubject
             .removeDuplicates { $0.get() === $1.get() }
-            .scan(ScopeScan(last: Weak(nil), curr: Weak(nil))) { prev, newScope in
-                ScopeScan(last: prev.curr, curr: newScope)
-            }
-            .sink { [weak self] scan in
+            .scan((Weak<Scope>(nil), Weak<Scope>(nil))) { ($0.1, $1) }
+            .sink { [weak self] (curr, next) in
                 guard let self = self else { return }
-                if let last = scan.last.get() {
-                    last.release(subscope: self)
-                }
-                if let curr = scan.curr.get() {
-                    curr.retain(subscope: self)
-                }
+                curr.get()?.remove(subscope: self)
+                next.get()?.add(subscope: self)
             }.store(in: lifecycleBag)
 
 
-        // Order events to allow actions before and after subscopes
-        superIsActivePublisher
-            .combineLatest(selfAllowsActivePublisher) { $0 && $1 }
-            .scan(ActiveScan(last: false, curr: false)) { prev, newScope in
-                ActiveScan(last: prev.curr, curr: newScope)
-            }
-            // Only notify on a state switch
-            .filter { $0.last != $0.curr }
-            .sink(receiveCompletion: { [weak self] completion in
+        superScopeIsEnabledPublisher
+            .combineLatest(internalIsEnabledSubject)
+            .map { $0 && $1 }
+            .scan((false, false)) { ($0.1, $1) }
+            .filter { $0 != $1 }
+            .map { $1 }
+            .sink { [weak self] enabled in
                 guard let self = self else { return }
-                self.preExternalIsActiveScanSubject.send(completion: completion)
-                self.externalIsActiveSubject.send(completion: completion)
-                self.postExternalIsActiveScanSubject.send(completion: completion)
-            }, receiveValue: { [weak self] value in
-                guard let self = self else { return }
-                self.preExternalIsActiveScanSubject.send(value)
-                self.externalIsActiveSubject.send(value.curr)
-                self.postExternalIsActiveScanSubject.send(value)
-            }).store(in: lifecycleBag)
+                if enabled {
+                    self.willStart().store(in: self.workBag)
+                }
+                // Notify subscopes after enabling self but before disabling self
+                self.externalIsEnabledSubject.send(enabled)
+                if !enabled {
+                    self.willStop()
+                    self.workBag.cancel()
+                }
+            }.store(in: lifecycleBag)
     }
 
     public func enable() {
-        selfAllowsActiveSubject.send(true)
+        internalIsEnabledSubject.send(true)
     }
 
     public func disable() {
-        selfAllowsActiveSubject.send(false)
-    }
-
-    public func dispose() {
-        selfAllowsActiveSubject.send(false)
-        superscopeSubject.send(Weak(nil))
-        selfAllowsActiveSubject.send(completion: .finished)
-        superscopeSubject.send(completion: .finished)
+        internalIsEnabledSubject.send(false)
     }
 
     /// Bind the Scope's lifecycle to the passed Scope as a subscope.
-    public func attach(to superscope: Owning) {
-        superscopeSubject.send(Weak(superscope))
+    public func attach(to superscope: Scope) {
+        superscopeSubject
+            .send(Weak(superscope))
     }
 
     /// Removes the Scope from the lifecycle of its superscope.
     public func detach() {
-        superscopeSubject.send(Weak(nil))
+        superscopeSubject.send(Weak<Scope>(nil))
     }
 
 
@@ -204,11 +124,5 @@ open class Scope: Owning {
     /// - Any caching etc. done here must be cleaned up when the scope is fully ended.
     /// - A super call not required.
     open func willStop() {}
-
-    /// Override to do any pre-end cleanup. Executed after subscopes end.
-    /// - Do all local cleanup.
-    /// - A super call not required.
-    open func willEnd() {}
-
 
 }
