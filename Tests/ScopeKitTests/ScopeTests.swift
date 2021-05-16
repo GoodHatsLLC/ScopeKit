@@ -18,9 +18,9 @@ final class DependencyKitTests: XCTestCase {
     func testActivation() {
         let scope = Scope()
         scope.attach(to: root)
-        XCTAssert(!scope.externalIsEnabledSubject.value)
+        XCTAssert(!scope.externalIsActiveSubject.value)
         scope.enable()
-        XCTAssert(scope.externalIsEnabledSubject.value)
+        XCTAssert(scope.externalIsActiveSubject.value)
     }
 
     func testAttachmentUpdatesSubjects() {
@@ -168,9 +168,9 @@ final class DependencyKitTests: XCTestCase {
     func testActivationUpdatesSubscope() {
         let scope = Scope()
         scope.attach(to: root)
-        XCTAssert(!scope.externalIsEnabledSubject.value)
+        XCTAssert(!scope.externalIsActiveSubject.value)
         scope.enable()
-        XCTAssert(scope.externalIsEnabledSubject.value)
+        XCTAssert(scope.externalIsActiveSubject.value)
     }
 
     func testActivationUpdatesSubscopesRecursively() {
@@ -179,9 +179,9 @@ final class DependencyKitTests: XCTestCase {
         scope.attach(to: root)
         subscope.attach(to: scope)
         subscope.enable()
-        XCTAssert(!subscope.externalIsEnabledSubject.value)
+        XCTAssert(!subscope.externalIsActiveSubject.value)
         scope.enable()
-        XCTAssert(subscope.externalIsEnabledSubject.value)
+        XCTAssert(subscope.externalIsActiveSubject.value)
     }
 
     func testActivationUpdatesMultipleSubscopes() {
@@ -194,13 +194,13 @@ final class DependencyKitTests: XCTestCase {
         }
         XCTAssert(
             !subscopes
-                .map(\.externalIsEnabledSubject.value)
+                .map(\.externalIsActiveSubject.value)
                 .reduce(false) { $0 || $1 }
         )
         scope.enable()
         XCTAssert(
             subscopes
-                .map(\.externalIsEnabledSubject.value)
+                .map(\.externalIsActiveSubject.value)
                 .reduce(true) { $0 && $1 }
         )
     }
@@ -210,9 +210,9 @@ final class DependencyKitTests: XCTestCase {
         scope.attach(to: root)
         let subscope = Scope()
         subscope.enable()
-        XCTAssert(!subscope.externalIsEnabledSubject.value)
+        XCTAssert(!subscope.externalIsActiveSubject.value)
         subscope.attach(to: scope)
-        XCTAssert(!subscope.externalIsEnabledSubject.value)
+        XCTAssert(!subscope.externalIsActiveSubject.value)
     }
 
     func testAttachmentToActiveScopeActivatesSubscope() {
@@ -221,18 +221,18 @@ final class DependencyKitTests: XCTestCase {
         scope.enable()
         let subscope = Scope()
         subscope.enable()
-        XCTAssert(!subscope.externalIsEnabledSubject.value)
+        XCTAssert(!subscope.externalIsActiveSubject.value)
         subscope.attach(to: scope)
-        XCTAssert(subscope.externalIsEnabledSubject.value)
+        XCTAssert(subscope.externalIsActiveSubject.value)
     }
 
     func testDetatchmentStopsScope() {
         let subscope = Scope()
         subscope.enable()
         subscope.attach(to: root)
-        XCTAssert(subscope.externalIsEnabledSubject.value)
+        XCTAssert(subscope.externalIsActiveSubject.value)
         subscope.detach()
-        XCTAssert(!subscope.externalIsEnabledSubject.value)
+        XCTAssert(!subscope.externalIsActiveSubject.value)
     }
 
     func testStartCallsWillStart() {
@@ -321,9 +321,9 @@ final class DependencyKitTests: XCTestCase {
         subscope.attach(to: superscope)
         XCTAssert(!superscopeStarted)
         XCTAssert(!subscopeStarted)
-        XCTAssert(!subscope.externalIsEnabledSubject.value)
+        XCTAssert(!subscope.externalIsActiveSubject.value)
         superscope.attach(to: root)
-        XCTAssert(subscope.externalIsEnabledSubject.value)
+        XCTAssert(subscope.externalIsActiveSubject.value)
         XCTAssert(superscopeStarted)
         XCTAssert(subscopeStarted)
     }
@@ -347,9 +347,9 @@ final class DependencyKitTests: XCTestCase {
 
         XCTAssert(!superscopeStopped)
         XCTAssert(!subscopeStopped)
-        XCTAssert(subscope.externalIsEnabledSubject.value)
+        XCTAssert(subscope.externalIsActiveSubject.value)
         superscope.disable()
-        XCTAssert(!subscope.externalIsEnabledSubject.value)
+        XCTAssert(!subscope.externalIsActiveSubject.value)
         XCTAssert(subscopeStopped)
         XCTAssert(superscopeStopped)
     }

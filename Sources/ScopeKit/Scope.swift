@@ -4,7 +4,7 @@ import Foundation
 
 final class ScopeHost: Scope {
     private let alwaysEnabledSubject = CurrentValueSubject<Bool, Never>(true)
-    override var isEnabledPublisher: AnyPublisher<Bool, Never> {
+    override var isActivePublisher: AnyPublisher<Bool, Never> {
         alwaysEnabledSubject.eraseToAnyPublisher()
     }
 }
@@ -23,15 +23,15 @@ open class Scope {
 
     let subscopesSubject = CurrentValueSubject<[Scope], Never>([])
 
-    let externalIsEnabledSubject = CurrentValueSubject<Bool, Never>(false)
-    var isEnabledPublisher: AnyPublisher<Bool, Never> {
-        externalIsEnabledSubject.eraseToAnyPublisher()
+    let externalIsActiveSubject = CurrentValueSubject<Bool, Never>(false)
+    var isActivePublisher: AnyPublisher<Bool, Never> {
+        externalIsActiveSubject.eraseToAnyPublisher()
     }
 
     let superscopeSubject = CurrentValueSubject<Weak<Scope>, Never>(Weak(nil))
     private var superScopeIsEnabledPublisher: AnyPublisher<Bool, Never> {
         superscopeSubject
-            .map { $0.get()?.isEnabledPublisher }
+            .map { $0.get()?.isActivePublisher }
             .replaceNil(with: Just(false).eraseToAnyPublisher())
             .switchToLatest()
             .eraseToAnyPublisher()
@@ -42,7 +42,7 @@ open class Scope {
     }
 
     deinit {
-        externalIsEnabledSubject.send(false)
+        externalIsActiveSubject.send(false)
     }
 
     private func remove(subscope: Scope) {
@@ -80,7 +80,7 @@ open class Scope {
             .combineLatest(internalIsEnabledSubject)
             .map { $0 && $1 }
             .scan((false, false)) { ($0.1, $1) }
-            .filter { $0 != $1 }
+            .filter { $0 != $1 } // act only on state changes
             .map { $1 }
             .sink { [weak self] enabled in
                 guard let self = self else { return }
@@ -88,7 +88,7 @@ open class Scope {
                     self.willStart().store(in: self.workBag)
                 }
                 // Notify subscopes after enabling self but before disabling self
-                self.externalIsEnabledSubject.send(enabled)
+                self.externalIsActiveSubject.send(enabled)
                 if !enabled {
                     self.willStop()
                     self.workBag.cancel()
@@ -96,10 +96,12 @@ open class Scope {
             }.store(in: lifecycleBag)
     }
 
+    /// Allow this scope to act (iff attached to active superscope)
     public func enable() {
         internalIsEnabledSubject.send(true)
     }
 
+    /// Disable this scope (even if attached to active superscope)
     public func disable() {
         internalIsEnabledSubject.send(false)
     }
@@ -110,7 +112,7 @@ open class Scope {
             .send(Weak(superscope))
     }
 
-    /// Removes the Scope from the lifecycle of its superscope.
+    /// Remove the Scope from the lifecycle of its superscope.
     public func detach() {
         superscopeSubject.send(Weak<Scope>(nil))
     }
