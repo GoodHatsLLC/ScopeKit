@@ -116,7 +116,7 @@ open class Scope {
     }
 
     /// Remove the Scope from the lifecycle of its superscope.
-    public func detach() {
+    public func detatch() {
         superscopeSubject.send(Weak<Scope>(nil))
     }
 
