@@ -13,6 +13,8 @@ open class ScopeOwning {
         Just(false).eraseToAnyPublisher()
     }
 
+    public init() {}
+
     fileprivate func remove(subscope: ScopeOwning) {
         subscopesSubject
             .prefix(1)
@@ -37,6 +39,10 @@ public final class ScopeRoot: ScopeOwning {
     private let alwaysEnabledSubject = CurrentValueSubject<Bool, Never>(true)
     override var isActivePublisher: AnyPublisher<Bool, Never> {
         alwaysEnabledSubject.eraseToAnyPublisher()
+    }
+
+    override public init() {
+        super.init()
     }
 }
 
