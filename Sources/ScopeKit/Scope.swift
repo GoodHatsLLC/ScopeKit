@@ -33,7 +33,7 @@ open class ScopeOwning {
     }
 }
 
-final class ScopeRoot: ScopeOwning {
+public final class ScopeRoot: ScopeOwning {
     private let alwaysEnabledSubject = CurrentValueSubject<Bool, Never>(true)
     override var isActivePublisher: AnyPublisher<Bool, Never> {
         alwaysEnabledSubject.eraseToAnyPublisher()
