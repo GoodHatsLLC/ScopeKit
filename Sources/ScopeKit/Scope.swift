@@ -67,7 +67,7 @@ open class Scope: ScopeOwning {
             .eraseToAnyPublisher()
     }
 
-    override init() {
+    override public init() {
         super.init()
         subscribeToLifecycle()
     }

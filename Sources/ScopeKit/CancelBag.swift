@@ -9,15 +9,15 @@ public class CancelBag: Cancellable, Hashable {
         cancel()
     }
 
-    required init(cancellables: Set<AnyCancellable> = Set()) {
+    required public init(cancellables: Set<AnyCancellable> = Set()) {
         self.cancellables = cancellables
     }
 
-    convenience init<C: Collection>(cancellables: C) where C.Element == AnyCancellable {
+    convenience public init<C: Collection>(cancellables: C) where C.Element == AnyCancellable {
         self.init(cancellables: Set(cancellables))
     }
 
-    convenience init(@CancelBagBuilder _ builder: () -> [AnyCancellable]) {
+    convenience public init(@CancelBagBuilder _ builder: () -> [AnyCancellable]) {
         self.init(cancellables: Set(builder()))
     }
 }
