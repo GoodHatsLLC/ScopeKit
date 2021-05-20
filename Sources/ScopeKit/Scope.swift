@@ -1,7 +1,31 @@
 import Combine
 import Foundation
 
-open class ScopeOwning {
+public protocol ScopeOwningType {
+    func asScopeOwning() -> ScopeOwning
+}
+
+public extension ScopeOwningType where Self: ScopeOwning {
+    func asScopeOwning() -> ScopeOwning {
+        return self
+    }
+}
+
+public protocol ScopeType: ScopeOwningType {
+    /// Allow this scope to act (iff attached to active superscope)
+    func enable()
+
+    /// Disable this scope (even if attached to active superscope)
+    func disable()
+
+    /// Bind the Scope's lifecycle to the passed Scope as a subscope.
+    func attach(to superscope: ScopeOwningType)
+
+    /// Remove the Scope from the lifecycle of its superscope.
+    func detatch()
+}
+
+open class ScopeOwning: ScopeOwningType {
 
     fileprivate let lifecycleBag = CancelBag()
 
@@ -47,7 +71,7 @@ public final class ScopeRoot: ScopeOwning {
 }
 
 // MARK: Scope
-open class Scope: ScopeOwning {
+open class Scope: ScopeOwning, ScopeType {
 
     fileprivate var workBag = CancelBag()
 
@@ -125,9 +149,9 @@ open class Scope: ScopeOwning {
     }
 
     /// Bind the Scope's lifecycle to the passed Scope as a subscope.
-    public func attach(to superscope: ScopeOwning) {
+    public func attach(to superscope: ScopeOwningType) {
         superscopeSubject
-            .send(Weak(superscope))
+            .send(Weak(superscope.asScopeOwning()))
     }
 
     /// Remove the Scope from the lifecycle of its superscope.
