@@ -7,6 +7,7 @@ public protocol WorkerType {
 
 open class Worker: WorkerType {
 
+    public init() {}
     /// Start the Worker's defined work.
     public final func start() -> AnyCancellable {
         self.willStart()
@@ -15,7 +16,7 @@ open class Worker: WorkerType {
     /// Override this function to define work begun on `start()`.
     /// Do not call directly.
     /// `super.willStart()` call is not required.
-    public func willStart() -> AnyCancellable {
+    open func willStart() -> AnyCancellable {
         AnyCancellable({})
     }
 
