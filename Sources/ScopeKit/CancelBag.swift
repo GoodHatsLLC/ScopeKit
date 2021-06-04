@@ -20,6 +20,10 @@ public class CancelBag: Cancellable, Hashable {
     convenience public init(@CancelBagBuilder _ builder: () -> [AnyCancellable]) {
         self.init(cancellables: Set(builder()))
     }
+
+    convenience public init(cancellable: AnyCancellable) {
+        self.init(cancellables: Set([cancellable]))
+    }
 }
 
 public extension CancelBag {
