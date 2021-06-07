@@ -44,7 +44,7 @@ public extension CancelBag {
     }
 }
 
-// MARK: CancellableCollectionConvertible
+// MARK: CancelBaggable
 
 extension CancelBag: CancelBaggable {
     public func asCancellableCollection() -> [AnyCancellable] {
