@@ -1,29 +1,29 @@
 import Foundation
 import Combine
 
-public protocol CancellableCollectionConvertible {
+public protocol CancelBaggable {
     func asCancellableCollection() -> [AnyCancellable]
 }
 
-extension Array: CancellableCollectionConvertible where Element == AnyCancellable {
+extension Array: CancelBaggable where Element == AnyCancellable {
     public func asCancellableCollection() -> [AnyCancellable] {
         self
     }
 }
 
-extension Set: CancellableCollectionConvertible where Element == AnyCancellable {
-    public func asCancellableCollection() -> [AnyCancellable] {
-        self.map{ $0 }
-    }
-}
-
-extension AnyCollection: CancellableCollectionConvertible where Element == AnyCancellable {
+extension Set: CancelBaggable where Element == AnyCancellable {
     public func asCancellableCollection() -> [AnyCancellable] {
         self.map { $0 }
     }
 }
 
-extension AnyCancellable: CancellableCollectionConvertible {
+extension AnyCollection: CancelBaggable where Element == AnyCancellable {
+    public func asCancellableCollection() -> [AnyCancellable] {
+        self.map { $0 }
+    }
+}
+
+extension AnyCancellable: CancelBaggable {
     public func asCancellableCollection() -> [AnyCancellable] {
         [self]
     }

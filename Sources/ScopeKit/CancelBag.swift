@@ -23,14 +23,14 @@ public class CancelBag: Cancellable {
 
 @resultBuilder
 public struct CancelBagBuilder {
-    public static func buildBlock(_ toCCC: CancellableCollectionConvertible...) -> [AnyCancellable] {
-        toCCC.flatMap { $0.asCancellableCollection() }
+    public static func buildBlock(_ baggable: CancelBaggable...) -> [AnyCancellable] {
+        baggable.flatMap { $0.asCancellableCollection() }
     }
-    public static func buildArray(_ toCCC: [CancellableCollectionConvertible]) -> [AnyCancellable] {
-        toCCC.flatMap { $0.asCancellableCollection() }
+    public static func buildArray(_ baggable: [CancelBaggable]) -> [AnyCancellable] {
+        baggable.flatMap { $0.asCancellableCollection() }
     }
-    public static func buildOptional(_ toCCC: CancellableCollectionConvertible?) -> [AnyCancellable] {
-        toCCC.map { $0.asCancellableCollection().map{ $0 } } ?? []
+    public static func buildOptional(_ baggable: CancelBaggable?) -> [AnyCancellable] {
+        baggable.map { $0.asCancellableCollection().map{ $0 } } ?? []
     }
 }
 
@@ -46,7 +46,7 @@ public extension CancelBag {
 
 // MARK: CancellableCollectionConvertible
 
-extension CancelBag: CancellableCollectionConvertible {
+extension CancelBag: CancelBaggable {
     public func asCancellableCollection() -> [AnyCancellable] {
         self.cancellables.map { $0 }
     }
