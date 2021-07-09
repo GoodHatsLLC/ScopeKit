@@ -6,7 +6,7 @@ ScopeKit is a small Swift framework which makes it easy to scope the lifecycle f
 ### Scope 
 The core construct in ScopeKit is the [Scope](https://github.com/GoodHatsLLC/ScopeKit/blob/main/Sources/ScopeKit/Scope.swift)
 
-```
+```swift
 public protocol ScopeType: ScopeOwningType {
     /// Allow this scope to act (iff attached to active superscope)
     func enable()
@@ -44,7 +44,7 @@ Scopes can be attatched to other Scopes as subscopes — including to the speci
 
 A cancel bag is a convenient container for Combine `AnyCancellable`s.
 
-```
+```swift
 CancelBag {
   aPublisher.sink { _ in //actions }
   aSecondPublisher.sink { _ in //actions }
