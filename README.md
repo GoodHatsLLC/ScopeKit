@@ -4,7 +4,7 @@ ScopeKit is a small Swift framework which makes it easy to scope the lifecycle f
 ## ScopeKit primitives
 
 ### Scope 
-The core construct in ScopeKit is the [Scope](https://github.com/GoodHatsLLC/ScopeKit/blob/main/Sources/ScopeKit/Scope.swift)
+The [`Scope`](https://github.com/GoodHatsLLC/ScopeKit/blob/main/Sources/ScopeKit/Scope.swift) is ScopeKit's core construct.
 
 ```swift
 public protocol ScopeType: ScopeOwningType {
