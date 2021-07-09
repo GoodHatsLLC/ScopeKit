@@ -22,7 +22,7 @@ public protocol ScopeType: ScopeOwningType {
     func attach(to superscope: ScopeOwningType)
 
     /// Remove the Scope from the lifecycle of its superscope.
-    func detatch()
+    func detach()
 }
 
 open class ScopeOwning: ScopeOwningType {
@@ -155,7 +155,7 @@ open class Scope: ScopeOwning, ScopeType {
     }
 
     /// Remove the Scope from the lifecycle of its superscope.
-    public func detatch() {
+    public func detach() {
         superscopeSubject.send(Weak<ScopeOwning>(nil))
     }
 

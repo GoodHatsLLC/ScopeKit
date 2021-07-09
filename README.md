@@ -18,7 +18,7 @@ public protocol ScopeType: ScopeOwningType {
     func attach(to superscope: ScopeOwningType)
 
     /// Remove the Scope from the lifecycle of its superscope.
-    func detatch()
+    func detach()
 }
 
 class MyViewModel: Scope {
