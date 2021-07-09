@@ -34,7 +34,7 @@ class MyViewModel: Scope {
 }
  
 ```
-Scopes are only active when they are both attatched to a parent and enabled.
+`Scope`s are only active when they are both attached to a parent and enabled.
 
 Combine sinks defined in `willStart()` are activated when the scope is started and ended when the scope is stopped. It provides a `@resultBuilder` based API.
 
