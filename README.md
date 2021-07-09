@@ -42,7 +42,7 @@ Scopes can be attatched to other Scopes as subscopes — including to the speci
 
 ### CancelBag
 
-A cancel bag is a convenient container for Combine `AnyCancellable`s.
+A [`CancelBag`](https://github.com/GoodHatsLLC/ScopeKit/blob/main/Sources/ScopeKit/CancelBag.swift) is a convenience container for Combine `AnyCancellable`s and for other `CancelBag`s.
 
 ```swift
 CancelBag {
@@ -53,4 +53,4 @@ CancelBag {
 
 ### Worker
 
-Workers are a convenience handler for simple Combine routines which should not be able to have sub-routines. They're effectively single-level Scopes.
+The [`Worker`](https://github.com/GoodHatsLLC/ScopeKit/blob/main/Sources/ScopeKit/Worker.swift) is a convenience super-class for simple Combine routines which should not be able to have sub-routines. They're effectively single-level Scopes.
