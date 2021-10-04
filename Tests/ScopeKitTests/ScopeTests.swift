@@ -54,12 +54,12 @@ final class DependencyKitTests: XCTestCase {
         )
     }
 
-    func testDetatchmentUpdatesSubjects() {
+    func testDetachmentUpdatesSubjects() {
         let scope = Scope()
         scope.attach(to: root)
         XCTAssert(scope.superscopeSubject.value.get() === root)
         XCTAssert(root.subscopesSubject.value.first === scope)
-        scope.detatch()
+        scope.detach()
         XCTAssertNil(scope.superscopeSubject.value.get())
         XCTAssertNil(root.subscopesSubject.value.first)
     }
@@ -96,7 +96,7 @@ final class DependencyKitTests: XCTestCase {
         subscope!.attach(to: root)
         subscope = nil
         XCTAssertNotNil(weakSubscope)
-        weakSubscope?.detatch()
+        weakSubscope?.detach()
         XCTAssertNil(weakSubscope)
     }
 
@@ -116,7 +116,7 @@ final class DependencyKitTests: XCTestCase {
         XCTAssertNotNil(weakScope)
         XCTAssertNotNil(weakSubscope)
         XCTAssertNotNil(weakDescendantScope)
-        weakScope?.detatch()
+        weakScope?.detach()
         XCTAssertNil(weakScope)
         XCTAssertNil(weakSubscope)
         XCTAssertNil(weakDescendantScope)
@@ -223,12 +223,12 @@ final class DependencyKitTests: XCTestCase {
         XCTAssert(subscope.externalIsActiveSubject.value)
     }
 
-    func testDetatchmentStopsScope() {
+    func testDetachmentStopsScope() {
         let subscope = Scope()
         subscope.enable()
         subscope.attach(to: root)
         XCTAssert(subscope.externalIsActiveSubject.value)
-        subscope.detatch()
+        subscope.detach()
         XCTAssert(!subscope.externalIsActiveSubject.value)
     }
 

@@ -1,16 +1,6 @@
 import Combine
 import Foundation
 
-public protocol ScopeOwningType {
-    func asScopeOwning() -> ScopeOwning
-}
-
-public extension ScopeOwningType where Self: ScopeOwning {
-    func asScopeOwning() -> ScopeOwning {
-        return self
-    }
-}
-
 public protocol ScopeType: ScopeOwningType {
     /// Allow this scope to act (iff attached to active superscope)
     func enable()
@@ -22,52 +12,7 @@ public protocol ScopeType: ScopeOwningType {
     func attach(to superscope: ScopeOwningType)
 
     /// Remove the Scope from the lifecycle of its superscope.
-    func detatch()
-}
-
-open class ScopeOwning: ScopeOwningType {
-
-    fileprivate let lifecycleBag = CancelBag()
-
-    // internal for testing
-    let subscopesSubject = CurrentValueSubject<[ScopeOwning], Never>([])
-
-    // internal for testing
-    var isActivePublisher: AnyPublisher<Bool, Never> {
-        Just(false).eraseToAnyPublisher()
-    }
-
-    public init() {}
-
-    fileprivate func remove(subscope: ScopeOwning) {
-        subscopesSubject
-            .prefix(1)
-            .map { $0.filter { $0 !== subscope} }
-            .sink { [weak self] subscopes in
-                guard let self = self else { return }
-                self.subscopesSubject.send(subscopes)
-            }.store(in: lifecycleBag)
-    }
-
-    fileprivate func add(subscope: ScopeOwning) {
-        subscopesSubject
-            .prefix(1)
-            .sink { [weak self] subscopes in
-                guard let self = self else { return }
-                self.subscopesSubject.send(subscopes + [subscope])
-            }.store(in: lifecycleBag)
-    }
-}
-
-public final class ScopeRoot: ScopeOwning {
-    private let alwaysEnabledSubject = CurrentValueSubject<Bool, Never>(true)
-    override var isActivePublisher: AnyPublisher<Bool, Never> {
-        alwaysEnabledSubject.eraseToAnyPublisher()
-    }
-
-    override public init() {
-        super.init()
-    }
+    func detach()
 }
 
 // MARK: Scope
@@ -127,7 +72,9 @@ open class Scope: ScopeOwning, ScopeType {
             .sink { [weak self] enabled in
                 guard let self = self else { return }
                 if enabled {
-                    self.willStart().store(in: self.workBag)
+                    self.willStart()
+                        .asCancelBag()
+                        .store(in: self.workBag)
                 }
                 // Notify subscopes after enabling self but before disabling self
                 self.externalIsActiveSubject.send(enabled)
@@ -155,7 +102,7 @@ open class Scope: ScopeOwning, ScopeType {
     }
 
     /// Remove the Scope from the lifecycle of its superscope.
-    public func detatch() {
+    public func detach() {
         superscopeSubject.send(Weak<ScopeOwning>(nil))
     }
 
@@ -167,7 +114,7 @@ open class Scope: ScopeOwning, ScopeType {
     /// - Work defined here is cancelled on suspension and on end.
     /// - This Scope is started and restarted before its subscopes.
     /// - A super call not required.
-    open func willStart() -> CancelBag {
+    open func willStart() -> Cancelling {
         CancelBag()
     }
 

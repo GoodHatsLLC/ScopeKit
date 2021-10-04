@@ -27,7 +27,7 @@ final class ReportingScope: Scope {
         self.eventPublisher = eventPublisher
     }
 
-    override func willStart() -> CancelBag {
+    override func willStart() -> Cancelling {
         startCallback?()
         willStartCount += 1
         return CancelBag {

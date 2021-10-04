@@ -1,8 +1,8 @@
 import Combine
 import Foundation
 
-public class CancelBag: Cancellable {
-    fileprivate var cancellables: Set<AnyCancellable>
+public class CancelBag {
+    var cancellables: Set<AnyCancellable>
 
     required public init<C: Collection>(_ cancellables: C) where C.Element == AnyCancellable {
         self.cancellables = Set(cancellables)
@@ -24,31 +24,23 @@ public class CancelBag: Cancellable {
 @resultBuilder
 public struct CancelBagBuilder {
     public static func buildBlock(_ baggable: CancelBaggable...) -> [AnyCancellable] {
-        baggable.flatMap { $0.asCancellableCollection() }
+        baggable.flatMap { $0.asAnyCancellables() }
     }
     public static func buildArray(_ baggable: [CancelBaggable]) -> [AnyCancellable] {
-        baggable.flatMap { $0.asCancellableCollection() }
+        baggable.flatMap { $0.asAnyCancellables() }
     }
     public static func buildOptional(_ baggable: CancelBaggable?) -> [AnyCancellable] {
-        baggable.map { $0.asCancellableCollection().map{ $0 } } ?? []
+        baggable.map { $0.asAnyCancellables().map{ $0 } } ?? []
     }
 }
 
 
 // MARK: Cancellable
-public extension CancelBag {
-    func cancel() {
+extension CancelBag: Cancellable {
+    public func cancel() {
         // Cancel all work owned here.
         cancellables.forEach { $0.cancel() }
         cancellables.removeAll()
-    }
-}
-
-// MARK: CancelBaggable
-
-extension CancelBag: CancelBaggable {
-    public func asCancellableCollection() -> [AnyCancellable] {
-        self.cancellables.map { $0 }
     }
 }
 
@@ -63,6 +55,6 @@ public extension AnyCancellable {
 public extension CancelBag {
     func store(in scope: CancelBag) {
         scope.cancellables.formUnion(cancellables)
-        self.cancellables.removeAll()
+        cancellables.removeAll()
     }
 }
