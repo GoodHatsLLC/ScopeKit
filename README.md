@@ -1,5 +1,5 @@
 # ScopeKit
-ScopeKit is a small Swift framework which makes it easy to scope the lifecycle for Combine based sections of an app.
+ScopeKit is a small Swift framework which manages 'scopes' of Combine lifecycles.
 
 ## ScopeKit primitives
 
@@ -22,7 +22,7 @@ public protocol ScopeType: ScopeOwningType {
 }
 
 class MyViewModel: Scope {
-    override func willStart() -> CancelBag {
+    override func willStart() -> Cancelling {
         CancelBag {
           // my Combine actions
         }
