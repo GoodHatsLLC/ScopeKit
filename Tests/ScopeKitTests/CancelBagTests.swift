@@ -11,6 +11,13 @@ final class CancelBagTests: XCTestCase {
     override func tearDown() {
     }
 
+    func cancelBagAsCancelling() -> Cancelling {
+        CancelBag {
+            AnyCancellable({})
+        }
+    }
+
+
     func testCreationSingle() {
         _ = CancelBag(AnyCancellable({}))
     }
@@ -35,6 +42,12 @@ final class CancelBagTests: XCTestCase {
                 AnyCancellable({})
             }
             CancelBag()
+        }
+    }
+
+    func testNestedCancelBags() {
+        _ = CancelBag {
+            cancelBagAsCancelling()
         }
     }
 

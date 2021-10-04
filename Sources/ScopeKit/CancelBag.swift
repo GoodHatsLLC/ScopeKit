@@ -16,6 +16,11 @@ public class CancelBag {
         self.init(Set(builder()))
     }
 
+    func release() -> [AnyCancellable] {
+        defer { cancellables.removeAll() }
+        return cancellables.map { $0 }
+    }
+
     deinit {
         cancel()
     }
@@ -23,13 +28,13 @@ public class CancelBag {
 
 @resultBuilder
 public struct CancelBagBuilder {
-    public static func buildBlock(_ baggable: CancelBaggable...) -> [AnyCancellable] {
+    public static func buildBlock(_ baggable: Cancelling...) -> [AnyCancellable] {
         baggable.flatMap { $0.asAnyCancellables() }
     }
-    public static func buildArray(_ baggable: [CancelBaggable]) -> [AnyCancellable] {
+    public static func buildArray(_ baggable: [Cancelling]) -> [AnyCancellable] {
         baggable.flatMap { $0.asAnyCancellables() }
     }
-    public static func buildOptional(_ baggable: CancelBaggable?) -> [AnyCancellable] {
+    public static func buildOptional(_ baggable: Cancelling?) -> [AnyCancellable] {
         baggable.map { $0.asAnyCancellables().map{ $0 } } ?? []
     }
 }
