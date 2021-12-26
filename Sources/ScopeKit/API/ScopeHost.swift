@@ -20,20 +20,15 @@ extension ScopeHost: ScopeHosting {
     public var statePublisher: AnyPublisher<ScopeState, Never> {
         hostComponent.statePublisher
     }
-
-    public func retain(scopes: [AnyScopedBehavior]) {
-        hostComponent.retain(scopes: scopes)
+    public func attachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<(), Never> {
+        hostComponent.attachSubscopes(scopes)
     }
 
-    public func release(scopes: [AnyScopedBehavior]) {
-        hostComponent.release(scopes: scopes)
+    public func detachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never> {
+        hostComponent.detachSubscopes(scopes)
     }
 
-    public func attachSubscopes(_ subscopes: [AnyScopedBehavior]) -> Future<(), Never> {
-        hostComponent.attachSubscopes(subscopes)
-    }
-
-    public func detachSubscopes() -> Future<[AnyScopedBehavior], Never> {
-        hostComponent.detachSubscopes()
+    public func detachAllSubscopes() -> Future<[AnyScopedBehavior], Never> {
+        hostComponent.detachAllSubscopes()
     }
 }

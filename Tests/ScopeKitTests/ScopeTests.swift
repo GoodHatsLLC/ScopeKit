@@ -36,7 +36,7 @@ final class ScopeTests: XCTestCase {
         XCTAssertNotNil(weakScope)
     }
 
-    func test_noRelease_onceDetached() {
+    func test_noRetain_onceDetached() {
         weak var weakScope: Scope? = nil
         autoreleasepool {
             {
@@ -48,6 +48,17 @@ final class ScopeTests: XCTestCase {
             weakScope?.detach()
         }
         XCTAssertNil(weakScope)
+    }
+
+    func test_noRetain_betweenUnreferencedAttachedScopes() {
+        weak var weakHost: ScopeHost? = nil
+        autoreleasepool {
+            let host = ScopeHost()
+            weakHost = host
+            let scope = Scope()
+            scope.attach(to: host)
+        }
+        XCTAssertNil(weakHost)
     }
 
     func test_willStartCalled_onAttach() {

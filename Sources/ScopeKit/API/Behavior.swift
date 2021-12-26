@@ -3,67 +3,165 @@ import Foundation
 
 open class Behavior {
 
+    private var internalCancellables = Set<AnyCancellable>()
+    private var behaviorCancellable: AnyCancellable?
+    private let stateMulticastSubject = CurrentValueSubject<ScopeState, Never>(.detached)
+    private let hostSubject = CurrentValueSubject<AnyScopeHosting?, Never>(nil)
     public let id: UUID
-    private let behaviorComponent: BehaviorComponent
 
-    public init() {
-        let id = UUID()
+    init(
+        id: UUID
+    ) {
         self.id = id
-        self.behaviorComponent = BehaviorComponent(id: id)
-        behaviorComponent.manageBehaviorLifecycle(
-            starting: { [weak self] in
-                guard let self = self else {
-                    return AnyCancellable {}
-                }
-                return self.start()
-            },
-            didStop: { [weak self] in
-                guard let self = self else {
-                    return
-                }
-                self.didStop()
-            })
+        manageBehaviorLifecycle()
     }
 
+    /// overridden only internally.
+    func willStop(){}
+
     /// Behavior to be extended by subclass.
+    /// Note: `super` call is not required.
     open func willStart(cancellables: inout Set<AnyCancellable>) {}
 
     /// Notification of stop.
+    /// Note: `super` call is not required.
     open func didStop() {}
+
+    var statePublisher: AnyPublisher<ScopeState, Never> {
+        let isDirectlyDetached = hostPublisher
+            .filter { $0 == nil }
+            .map { _ in ScopeState.detached }
+
+        let directSuperScopeStatePublisher = hostPublisher
+            .compactMap { $0 }
+            .map { directSuperScope in
+                directSuperScope.statePublisher
+            }
+            .switchToLatest()
+
+        return Publishers.Merge(isDirectlyDetached,
+                                directSuperScopeStatePublisher)
+            .removeDuplicates()
+            .multicast(subject: stateMulticastSubject)
+            .autoconnect()
+            .eraseToAnyPublisher()
+    }
 }
 
+
+extension Behavior: ScopedBehavior {
+
+    public func attach(to host: AnyScopeHosting) {
+        host.attachSubscopes([self.eraseToAnyScopedBehavior()])
+            .sink {
+                self.hostSubject.send(host)
+            }
+            .store(in: &internalCancellables)
+    }
+
+    public func detach() {
+        hostPublisher
+            .first()
+            .map { optionalHost in
+                optionalHost.map { host in
+                    host.detachSubscopes([self.eraseToAnyScopedBehavior()])
+                        .map { _ in () }
+                        .eraseToAnyPublisher()
+                } ?? Just(()).eraseToAnyPublisher()
+            }
+            .sink { host in
+                self.hostSubject.send(nil)
+            }
+            .store(in: &internalCancellables)
+    }
+
+    public func willDetach(from host: AnyScopeHosting) {
+        hostPublisher
+            .first()
+            .compactMap { $0 }
+            .filter { $0 == host }
+            .map { _ in () }
+            .sink {
+                self.hostSubject.send(nil)
+            }
+            .store(in: &internalCancellables)
+    }
+
+    public func didAttach(to host: AnyScopeHosting) {
+        hostSubject.send(host)
+    }
+
+}
+
+
 extension Behavior {
-    private final func start() -> AnyCancellable {
+
+    func manageBehaviorLifecycle() {
+        let isActive = statePublisher
+            .map { $0 == .attached }
+            .removeDuplicates()
+
+        let becameActive = isActive
+            .filter { $0 == true }
+            .map { _ in () }
+
+        let becameInactive = isActive
+            .filter { $0 == false }
+            .map { _ in () }
+
+        becameActive
+            .sink { [weak self] in
+                guard let self = self else {
+                    return
+                }
+                self.start()
+            }
+            .store(in: &internalCancellables)
+
+        becameInactive
+            .sink { [weak self] in
+                guard let self = self else {
+                    return
+                }
+                self.stop()
+            }
+            .store(in: &internalCancellables)
+    }
+
+    var state: ScopeState {
+        stateMulticastSubject.value
+    }
+
+    var host: AnyScopeHosting? {
+        hostSubject.value
+    }
+
+    var hostPublisher: AnyPublisher<AnyScopeHosting?, Never> {
+        hostSubject
+            .removeDuplicates()
+            .eraseToAnyPublisher()
+    }
+
+    func start() {
         var cancellables = Set<AnyCancellable>()
+
         willStart(cancellables: &cancellables)
-        return AnyCancellable {
+
+        behaviorCancellable = AnyCancellable {
             cancellables.forEach { cancellable in
                 cancellable.cancel()
             }
         }
     }
-}
 
-extension Behavior: ScopedBehavior {
-    public final func didAttach(to host: AnyScopeHosting) {
-        behaviorComponent.didAttach(to: host)
+    func stop() {
+        willStop()
+
+        // Cancel explicitly in case of consumer retention.
+        behaviorCancellable?.cancel()
+        behaviorCancellable = nil
+
+        didStop()
     }
 
-    public final func willDetach(from host: AnyScopeHosting) {
-        behaviorComponent.willDetach(from: host)
-    }
-
-    public func attach(to host: AnyScopeHosting) {
-        behaviorComponent.attach(to: host)
-    }
-
-    public func detach() {
-        behaviorComponent.detach()
-    }
-}
-
-extension Behavior {
-    public func attach<HostType: ScopeHosting>(to host: HostType) {
-        self.attach(to: host.eraseToAnyScopeHosting())
-    }
 }
