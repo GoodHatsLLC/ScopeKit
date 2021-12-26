@@ -1,11 +1,14 @@
 import Foundation
 
-struct Weak<T: AnyObject> {
-    private weak var held: T?
-    init(_ held: T?) {
-        self.held = held
+struct Weak<T> where T: AnyObject {
+
+    private weak var weakValue: T?
+
+    init(_ value: T?) {
+        self.weakValue = value
     }
-    func get() -> T? {
-        held
+    
+    var value: T? {
+        weakValue
     }
 }

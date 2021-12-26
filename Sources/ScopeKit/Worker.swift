@@ -1,23 +1,32 @@
+// Copyright © 2021 Included Health
+
 import Combine
 import Foundation
 
-public protocol WorkerType {
-    func start() -> Cancelling
+protocol WorkerType {
+    associatedtype Input
+    func start(_ input: Input) -> AnyCancellable
 }
 
-open class Worker: WorkerType {
-
-    public init() {}
-    /// Start the Worker's defined work.
-    public final func start() -> Cancelling {
-        self.willStart()
+extension WorkerType where Input == () {
+    func start() -> AnyCancellable {
+        start(())
     }
+}
 
-    /// Override this function to define work begun on `start()`.
-    /// Do not call directly.
-    /// `super.willStart()` call is not required.
-    open func willStart() -> Cancelling {
-        AnyCancellable({})
+class Worker<Input>: WorkerType {
+
+    init(){}
+
+    open func work(input: Input, cancellables: inout Set<AnyCancellable>) {}
+
+    final func start(_ input: Input) -> AnyCancellable {
+        var cancellables = Set<AnyCancellable>()
+        work(input: input, cancellables: &cancellables)
+        return AnyCancellable {
+            cancellables.forEach { cancellable in
+                cancellable.cancel()
+            }
+        }
     }
-
 }
