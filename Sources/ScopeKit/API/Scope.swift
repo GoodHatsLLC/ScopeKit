@@ -6,10 +6,9 @@ open class Scope: Behavior {
     private let hostComponent: HostComponent
     private var externalCancellables = Set<AnyCancellable>()
 
-    public init() {
-        let id = UUID()
-        self.hostComponent = HostComponent(id: id)
-        super.init(id: id)
+    public override init() {
+        self.hostComponent = HostComponent()
+        super.init()
     }
 
     final override func willStop() {
@@ -35,16 +34,23 @@ extension Scope: CancellableOwningWhileActive {
 
 extension Scope: ScopeHosting {
 
+    public var weakHandle: WeakScopeHostingHandle {
+        let weak = Weak(self)
+        return WeakScopeHostingHandle {
+            weak.value?.eraseToAnyScopeHosting()
+        }
+    }
+
     public func attachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<(), Never> {
-        hostComponent.attachSubscopes(scopes)
+        hostComponent.attachSubscopes(scopes, to: self.eraseToAnyScopeHosting())
     }
 
     public func detachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never> {
-        hostComponent.detachSubscopes(scopes)
+        hostComponent.detachSubscopes(scopes, from: self.eraseToAnyScopeHosting())
     }
 
     public func detachAllSubscopes() -> Future<[AnyScopedBehavior], Never> {
-        hostComponent.detachAllSubscopes()
+        hostComponent.detachAllSubscopes(from: self.eraseToAnyScopeHosting())
     }
 }
 

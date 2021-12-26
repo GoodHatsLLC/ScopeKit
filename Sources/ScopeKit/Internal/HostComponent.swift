@@ -5,20 +5,17 @@ final class HostComponent {
 
     private var internalCancellables = Set<AnyCancellable>()
     private let subscopesSubject = CurrentValueSubject<Set<AnyScopedBehavior>, Never>([])
-    let id: UUID
 
-    init(id: UUID){
-        self.id = id
-    }
+    init(){}
 }
 
-extension HostComponent: ScopeHosting {
+extension HostComponent {
 
     var statePublisher: AnyPublisher<ScopeState, Never> {
         Just(ScopeState.attached).eraseToAnyPublisher()
     }
 
-    func detachAllSubscopes() -> Future<[AnyScopedBehavior], Never> {
+    func detachAllSubscopes(from owner: AnyScopeHosting) -> Future<[AnyScopedBehavior], Never> {
         // By not using Deferred we avoid the consumer having to sink
         // if they're not interested in keeping the detached Scopes.
         Future { [self] promise in
@@ -26,7 +23,7 @@ extension HostComponent: ScopeHosting {
                 .first()
                 .sink { subscopes in
                     subscopes.forEach { releasedScope in
-                        releasedScope.willDetach(from: self.eraseToAnyScopeHosting())
+                        releasedScope.willDetach(from: owner)
                     }
                     self.subscopesSubject.send([])
                     promise(.success(subscopes.map { $0 }))
@@ -35,7 +32,7 @@ extension HostComponent: ScopeHosting {
         }
     }
 
-    func detachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never> {
+    func detachSubscopes(_ scopes: [AnyScopedBehavior], from owner: AnyScopeHosting) -> Future<[AnyScopedBehavior], Never> {
         // By not using Deferred we avoid the consumer having to sink
         // if they're not interested in keeping the detached Scopes.
         Future { [self] promise in
@@ -44,7 +41,7 @@ extension HostComponent: ScopeHosting {
                 .sink { subscopes in
                     let releasedScopes = subscopes.intersection(scopes)
                     releasedScopes.forEach { releasedScope in
-                        releasedScope.willDetach(from: self.eraseToAnyScopeHosting())
+                        releasedScope.willDetach(from: owner)
                     }
                     self.subscopesSubject.send(subscopes.subtracting(releasedScopes))
                     promise(.success(releasedScopes.map { $0 }))
@@ -53,7 +50,7 @@ extension HostComponent: ScopeHosting {
         }
     }
 
-    func attachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<(), Never> {
+    func attachSubscopes(_ scopes: [AnyScopedBehavior], to owner: AnyScopeHosting) -> Future<(), Never> {
         // By not using Deferred we avoid the consumer having to sink
         // if they're not interested in keeping the detached Scopes.
         Future { [self] promise in
@@ -62,7 +59,7 @@ extension HostComponent: ScopeHosting {
                 .sink { existingSubscopes in
                     self.subscopesSubject.send(existingSubscopes.union(scopes))
                     scopes.forEach { scope in
-                        scope.didAttach(to: self.eraseToAnyScopeHosting())
+                        scope.didAttach(to: owner)
                     }
                     promise(.success(()))
                 }

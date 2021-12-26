@@ -1,17 +1,25 @@
 import Combine
 import Foundation
 
-public struct AnyScopedBehavior: ScopedBehavior {
+public struct AnyScopedBehavior: ScopedBehavior, Hashable {
+
+    public static func == (lhs: AnyScopedBehavior, rhs: AnyScopedBehavior) -> Bool {
+        lhs.underlying === rhs.underlying
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(ObjectIdentifier(underlying))
+    }
+
 
     private let didAttachFunc: (AnyScopeHosting) -> ()
     private let willDetachFunc: (AnyScopeHosting) -> ()
     private let attachFunc: (AnyScopeHosting) -> ()
     private let detachFunc: () -> ()
-
-    public let id: UUID
+    public let underlying: AnyObject
 
     init<T: ScopedBehavior>(from type: T) {
-        id = type.id
+        self.underlying = type.underlying
         didAttachFunc = { host in type.didAttach(to: host) }
         willDetachFunc = { host in type.willDetach(from: host) }
         attachFunc = { host in type.attach(to: host) }

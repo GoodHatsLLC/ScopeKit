@@ -1,6 +1,6 @@
 import Foundation
 
-struct Weak<T>: Equatable where T: AnyObject, T: Equatable {
+struct Weak<T> where T: AnyObject {
 
     private weak var weakValue: T?
 

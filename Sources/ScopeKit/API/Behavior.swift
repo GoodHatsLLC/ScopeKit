@@ -2,17 +2,13 @@ import Combine
 import Foundation
 
 open class Behavior {
-
+    
     private var internalCancellables = Set<AnyCancellable>()
     private var behaviorCancellable: AnyCancellable?
     private let stateMulticastSubject = CurrentValueSubject<ScopeState, Never>(.detached)
-    private let hostSubject = CurrentValueSubject<AnyScopeHosting?, Never>(nil)
-    public let id: UUID
+    private let hostSubject = CurrentValueSubject<WeakScopeHostingHandle?, Never>(nil)
 
-    init(
-        id: UUID
-    ) {
-        self.id = id
+    init() {
         manageBehaviorLifecycle()
     }
 
@@ -46,6 +42,10 @@ open class Behavior {
             .autoconnect()
             .eraseToAnyPublisher()
     }
+
+    public var underlying: AnyObject {
+        self
+    }
 }
 
 
@@ -54,7 +54,7 @@ extension Behavior: ScopedBehavior {
     public func attach(to host: AnyScopeHosting) {
         host.attachSubscopes([self.eraseToAnyScopedBehavior()])
             .sink {
-                self.hostSubject.send(host)
+                self.hostSubject.send(host.weakHandle)
             }
             .store(in: &internalCancellables)
     }
@@ -69,9 +69,8 @@ extension Behavior: ScopedBehavior {
                         .eraseToAnyPublisher()
                 } ?? Just(()).eraseToAnyPublisher()
             }
-            .sink { host in
-                self.hostSubject.send(nil)
-            }
+            .switchToLatest()
+            .sink {}
             .store(in: &internalCancellables)
     }
 
@@ -79,7 +78,7 @@ extension Behavior: ScopedBehavior {
         hostPublisher
             .first()
             .compactMap { $0 }
-            .filter { $0 == host }
+            .filter { $0.underlying === host.underlying }
             .map { _ in () }
             .sink {
                 self.hostSubject.send(nil)
@@ -88,7 +87,7 @@ extension Behavior: ScopedBehavior {
     }
 
     public func didAttach(to host: AnyScopeHosting) {
-        hostSubject.send(host)
+        hostSubject.send(host.weakHandle)
     }
 
 }
@@ -133,12 +132,16 @@ extension Behavior {
     }
 
     var host: AnyScopeHosting? {
-        hostSubject.value
+        hostSubject.value?.value?.weakHandle.value
     }
 
     var hostPublisher: AnyPublisher<AnyScopeHosting?, Never> {
         hostSubject
-            .removeDuplicates()
+            .map { optionalWeakHandle in
+                optionalWeakHandle.flatMap { weakHandle in
+                    weakHandle.value
+                }
+            }
             .eraseToAnyPublisher()
     }
 
