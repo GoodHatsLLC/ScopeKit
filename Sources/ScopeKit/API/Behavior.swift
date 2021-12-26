@@ -24,16 +24,15 @@ open class Behavior {
                 self.didStop()
             })
     }
-}
-
-extension Behavior {
 
     /// Behavior to be extended by subclass.
     open func willStart(cancellables: inout Set<AnyCancellable>) {}
 
     /// Notification of stop.
     open func didStop() {}
+}
 
+extension Behavior {
     private final func start() -> AnyCancellable {
         var cancellables = Set<AnyCancellable>()
         willStart(cancellables: &cancellables)
@@ -60,5 +59,11 @@ extension Behavior: ScopedBehavior {
 
     public func detach() {
         behaviorComponent.detach()
+    }
+}
+
+extension Behavior {
+    public func attach<HostType: ScopeHosting>(to host: HostType) {
+        self.attach(to: host.eraseToAnyScopeHosting())
     }
 }
