@@ -10,24 +10,33 @@ open class Behavior {
         let id = UUID()
         self.id = id
         self.behaviorComponent = BehaviorComponent(id: id)
-        behaviorComponent.manageBehaviorLifecycle(starting: { [weak self] in
-            guard let self = self else {
-                return AnyCancellable {}
-            }
-            return self.start()
-        })
+        behaviorComponent.manageBehaviorLifecycle(
+            starting: { [weak self] in
+                guard let self = self else {
+                    return AnyCancellable {}
+                }
+                return self.start()
+            },
+            didStop: { [weak self] in
+                guard let self = self else {
+                    return
+                }
+                self.didStop()
+            })
     }
-
 }
 
 extension Behavior {
 
     /// Behavior to be extended by subclass.
-    open func behavior(cancellables: inout Set<AnyCancellable>){}
+    open func willStart(cancellables: inout Set<AnyCancellable>) {}
+
+    /// Notification of stop.
+    open func didStop() {}
 
     private final func start() -> AnyCancellable {
         var cancellables = Set<AnyCancellable>()
-        behavior(cancellables: &cancellables)
+        willStart(cancellables: &cancellables)
         return AnyCancellable {
             cancellables.forEach { cancellable in
                 cancellable.cancel()

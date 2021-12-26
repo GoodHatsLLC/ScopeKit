@@ -5,6 +5,7 @@ open class Scope {
 
     private let behaviorComponent: BehaviorComponent
     private let hostComponent: HostComponent
+    private var externalCancellables = Set<AnyCancellable>()
 
     public let id: UUID
 
@@ -13,30 +14,53 @@ open class Scope {
         self.id = id
         self.behaviorComponent = BehaviorComponent(id: id)
         self.hostComponent = HostComponent(id: id)
-        behaviorComponent.manageBehaviorLifecycle(starting: { [weak self] in
-            guard let self = self else {
-                return AnyCancellable {}
-            }
-            return self.start()
-        })
+        behaviorComponent.manageBehaviorLifecycle(
+            starting: { [weak self] in
+                guard let self = self else {
+                    return AnyCancellable {}
+                }
+                return self.start()
+            },
+            didStop: { [weak self] in
+                guard let self = self else {
+                    return
+                }
+                self.externalCancellables.forEach { cancellable in
+                    cancellable.cancel()
+                }
+                self.externalCancellables = Set<AnyCancellable>()
+                self.didStop()
+            })
     }
 
 }
 
-
 extension Scope {
 
     /// Behavior to be extended by subclass.
-    open func behavior(cancellables: inout Set<AnyCancellable>){}
+    open func willStart(cancellables: inout Set<AnyCancellable>) {}
+
+    /// Notification of stop.
+    open func didStop() {}
 
     private final func start() -> AnyCancellable {
         var cancellables = Set<AnyCancellable>()
-        behavior(cancellables: &cancellables)
+        willStart(cancellables: &cancellables)
         return AnyCancellable {
             cancellables.forEach { cancellable in
                 cancellable.cancel()
             }
         }
+    }
+}
+
+extension Scope: CancellableOwningWhileActive {
+    public var whileActive: CancellableOwner {
+        let owner = CancellableOwner()
+        owner
+            .eraseToAnyCancellable()
+            .store(in: &externalCancellables)
+        return owner
     }
 }
 

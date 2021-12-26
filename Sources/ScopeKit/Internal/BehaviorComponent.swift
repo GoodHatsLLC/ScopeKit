@@ -18,7 +18,10 @@ final class BehaviorComponent {
 
 extension BehaviorComponent: ScopedBehavior {
 
-    func manageBehaviorLifecycle(starting: @escaping Startable) {
+    func manageBehaviorLifecycle(
+        starting start: @escaping Startable,
+        didStop: @escaping Callable
+    ) {
         let isActive = statePublisher
             .map { $0 == .attached }
             .removeDuplicates()
@@ -33,13 +36,13 @@ extension BehaviorComponent: ScopedBehavior {
 
         becameActive
             .sink {
-                self.start(starting: starting)
+                self.start(starting: start)
             }
             .store(in: &internalCancellables)
 
         becameInactive
             .sink {
-                self.stop()
+                self.stop(didStop: didStop)
             }
             .store(in: &internalCancellables)
     }
@@ -124,7 +127,7 @@ extension BehaviorComponent: ScopedBehavior {
             .store(in: &behaviorCancellables)
     }
 
-    func stop() {
+    func stop(didStop: Callable) {
         let oldBehaviorCancellables = self.behaviorCancellables
         self.behaviorCancellables = Set<AnyCancellable>()
 
@@ -132,6 +135,7 @@ extension BehaviorComponent: ScopedBehavior {
         oldBehaviorCancellables.forEach { cancellable in
             cancellable.cancel()
         }
+        didStop()
     }
 
 }
