@@ -198,6 +198,10 @@ final class ScopeTests: XCTestCase {
         XCTAssertTrue(cancelCalled)
     }
 
+    func test_aThingThatShouldFail() {
+        XCTAssertFalse(true)
+    }
+
 }
 
 final class TestIsActiveScope: Scope {
