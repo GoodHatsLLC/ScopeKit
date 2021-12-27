@@ -2,11 +2,11 @@ import Combine
 import Foundation
 
 open class Behavior {
-    
-    private var internalCancellables = Set<AnyCancellable>()
+
     private var behaviorCancellable: AnyCancellable?
     private let stateMulticastSubject = CurrentValueSubject<ScopeState, Never>(.detached)
     private let hostSubject = CurrentValueSubject<WeakScopeHostingHandle?, Never>(nil)
+    var internalCancellables = Set<AnyCancellable>()
 
     init() {
         manageBehaviorLifecycle()

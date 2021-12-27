@@ -23,12 +23,28 @@ open class Scope: Behavior {
 }
 
 extension Scope: CancellableOwningWhileActive {
-    public var whileActive: CancellableOwner {
-        let owner = CancellableOwner()
-        owner
-            .eraseToAnyCancellable()
-            .store(in: &externalCancellables)
-        return owner
+    public var whileActive: Set<AnyCancellable> {
+        get {
+            Set<AnyCancellable>()
+        }
+        set {
+            externalCancellables.formUnion(newValue)
+            cancelExternalCancellablesIfNotActive()
+        }
+    }
+
+    func cancelExternalCancellablesIfNotActive() {
+        statePublisher
+            .first()
+            .filter { $0 == .detached }
+            .map { _ in () }
+            .sink {
+                self.externalCancellables.forEach { cancellable in
+                    cancellable.cancel()
+                }
+                self.externalCancellables = Set<AnyCancellable>()
+            }
+            .store(in: &internalCancellables)
     }
 }
 
