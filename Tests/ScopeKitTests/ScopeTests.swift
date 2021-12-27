@@ -1,354 +1,231 @@
 import Combine
 import XCTest
-@testable import ScopeKit
+import ScopeKit
 
-final class DependencyKitTests: XCTestCase {
+final class ScopeTests: XCTestCase {
 
-    private let root = ScopeRoot()
+    var host: ScopeHost!
 
     override func setUp() {
+        host = ScopeHost()
     }
 
     override func tearDown() {
+        host = nil
     }
 
-    func testActivation() {
-        let scope = Scope()
-        scope.attach(to: root)
-        XCTAssert(!scope.externalIsActiveSubject.value)
-        scope.enable()
-        XCTAssert(scope.externalIsActiveSubject.value)
-    }
+    // MARK: - Retain behavior
 
-    func testAttachmentUpdatesSubjects() {
-        let scope = Scope()
-        XCTAssertNil(scope.superscopeSubject.value.get())
-        XCTAssertNil(root.subscopesSubject.value.first)
-        scope.attach(to: root)
-        XCTAssert(scope.superscopeSubject.value.get() === root)
-        XCTAssert(root.subscopesSubject.value.first === scope)
-    }
-
-    func testMultipleSubscopeAttatchmentAndOrdering() {
-        let subscopes = [Scope(), Scope(), Scope()]
-        XCTAssertEqual(root.subscopesSubject.value.count, 0)
-        XCTAssert(
-            subscopes
-                .map(\.superscopeSubject.value)
-                .allSatisfy { $0.get() === nil}
-        )
-        subscopes.forEach {
-            $0.attach(to: root)
+    func test_noRetain_onInit() {
+        weak var weakScope: Scope? = nil
+        autoreleasepool {
+            let strongScope = Scope()
+            weakScope = strongScope
+            XCTAssertNotNil(weakScope)
         }
-        XCTAssertEqual(root.subscopesSubject.value.count, subscopes.count)
-        XCTAssert(
-            // This asserts order is maintained
-            zip(root.subscopesSubject.value, subscopes)
-                .map(===)
-                .reduce(true) { $0 && $1 }
-        )
-        XCTAssert(
-            subscopes
-                .map(\.superscopeSubject.value)
-                .allSatisfy { $0.get() === root}
-        )
+        XCTAssertNil(weakScope)
     }
 
-    func testDetachmentUpdatesSubjects() {
-        let scope = Scope()
-        scope.attach(to: root)
-        XCTAssert(scope.superscopeSubject.value.get() === root)
-        XCTAssert(root.subscopesSubject.value.first === scope)
+    func test_noRelease_whenAttached() {
+        weak var weakScope: Scope? = nil
+        autoreleasepool {
+            {
+                let scope = Scope()
+                weakScope = scope
+                scope.attach(to: host)
+            }()
+        }
+        XCTAssertNotNil(weakScope)
+    }
+
+    func test_noRetain_onceDetached() {
+        weak var weakScope: Scope? = nil
+        autoreleasepool {
+            {
+                let scope = Scope()
+                weakScope = scope
+                scope.attach(to: host)
+            }()
+            XCTAssertNotNil(weakScope)
+            weakScope?.detach()
+        }
+        XCTAssertNil(weakScope)
+    }
+
+    func test_noRetain_betweenUnreferencedAttachedScopes() {
+        weak var weakHost: ScopeHost? = nil
+        weak var weakScope: Scope? = nil
+        autoreleasepool {
+            let host = ScopeHost()
+            weakHost = host
+            let scope = Scope()
+            weakScope = scope
+            scope.attach(to: host)
+            XCTAssertNotNil(weakHost)
+            XCTAssertNotNil(weakScope)
+        }
+        XCTAssertNil(weakHost)
+        XCTAssertNil(weakScope)
+    }
+
+    func test_noRetain_byFormerParentOnReparent() {
+        let host2 = ScopeHost()
+        weak var weakScope: Scope? = nil
+        autoreleasepool {
+            let scope = Scope()
+            weakScope = scope
+            scope.attach(to: host)
+            scope.attach(to: host2)
+            scope.detach()
+        }
+        XCTAssertNil(weakScope)
+    }
+
+    // MARK: - willStart/didStop
+
+    func test_willStartCalled_onAttach() {
+        let scope = TestIsActiveScope()
+        XCTAssertFalse(scope.isActive)
+        scope.attach(to: host)
+        XCTAssertTrue(scope.isActive)
+    }
+
+    func test_didStopCalled_onDetach() {
+        let scope = TestIsActiveScope()
+        scope.attach(to: host)
+        XCTAssertTrue(scope.isActive)
         scope.detach()
-        XCTAssertNil(scope.superscopeSubject.value.get())
-        XCTAssertNil(root.subscopesSubject.value.first)
+        XCTAssertFalse(scope.isActive)
     }
 
-    func testAttachmentPreventsRelease() {
-        var scope: Scope? = Scope()
-        weak var weakSubscope = scope!
-        scope?.attach(to: root)
-        scope = nil
-        XCTAssertNotNil(weakSubscope)
+    func test_willStartCalled_onReattach() {
+        let scope = TestIsActiveScope()
+        scope.attach(to: host)
+        scope.detach()
+        XCTAssertFalse(scope.isActive)
+        scope.attach(to: host)
+        XCTAssertTrue(scope.isActive)
     }
 
-    func testDoesNotRetainSelf() {
-        var scope: Scope? = Scope()
-        weak var weakScope: Scope? = scope
-        XCTAssertNotNil(weakScope)
-        scope = nil
-        XCTAssertNil(weakScope)
+    func test_didStopNotCalled_onReparent() {
+        let host2 = ScopeHost()
+        let scope = LifecycleCallbackScope()
+        var didStop = false
+        scope.didStopCallback = { didStop = true }
+        scope.attach(to: host)
+        XCTAssertFalse(didStop)
+        scope.attach(to: host2)
+        XCTAssertFalse(didStop)
     }
 
-    func testDoesNotRetainSuperscope() {
-        var superscope: Scope? = Scope()
-        weak var weakSuperscope: Scope? = superscope
+    // MARK: - Cancellable
+
+    func test_cancellableCalled_onDetach() {
+        let scope = TestCancellableCalledScope()
+        scope.attach(to: host)
+        XCTAssertFalse(scope.cancellableCalled)
+        scope.detach()
+        XCTAssertTrue(scope.cancellableCalled)
+    }
+
+    // MARK: - Attachment cascading behavior
+
+    func test_scopeAttachmentCascades_onAttach() {
+        let root = Scope()
+        let one = Scope()
+        one.attach(to: root)
+        let two = Scope()
+        two.attach(to: one)
+        let three = Scope()
+        three.attach(to: two)
+        let test = TestIsActiveScope()
+        test.attach(to: three)
+        XCTAssertFalse(test.isActive)
+        root.attach(to: host)
+        XCTAssertTrue(test.isActive)
+    }
+
+    func test_scopeAttachmentCascades_onDetach() {
+        let root = Scope()
+        root.attach(to: host)
+        let one = Scope()
+        one.attach(to: root)
+        let two = Scope()
+        two.attach(to: one)
+        let three = Scope()
+        three.attach(to: two)
+        let test = TestIsActiveScope()
+        test.attach(to: three)
+        XCTAssertTrue(test.isActive)
+        root.detach()
+        XCTAssertFalse(test.isActive)
+    }
+
+    // MARK: - External cancellable behavior
+
+    func test_externalCancellable_stopsImmediatelyWhenUnattached() {
         let scope = Scope()
-        scope.attach(to: superscope!)
-        XCTAssertNotNil(weakSuperscope)
-        superscope = nil
-        XCTAssertNil(weakSuperscope)
-    }
-
-    func testDetachmentTriggersRelease() {
-        var subscope: Scope? = Scope()
-        weak var weakSubscope = subscope
-        subscope!.attach(to: root)
-        subscope = nil
-        XCTAssertNotNil(weakSubscope)
-        weakSubscope?.detach()
-        XCTAssertNil(weakSubscope)
-    }
-
-    func testDetachmentTriggersReleaseOfChain() {
-        var scope: Scope? = Scope()
-        var subscopescope: Scope? = Scope()
-        var descendantScope: Scope? = Scope()
-        weak var weakScope = scope
-        weak var weakSubscope = subscopescope
-        weak var weakDescendantScope = descendantScope
-        scope!.attach(to: root)
-        subscopescope!.attach(to: scope!)
-        weakDescendantScope!.attach(to: subscopescope!)
-        scope = nil
-        subscopescope = nil
-        descendantScope = nil
-        XCTAssertNotNil(weakScope)
-        XCTAssertNotNil(weakSubscope)
-        XCTAssertNotNil(weakDescendantScope)
-        weakScope?.detach()
-        XCTAssertNil(weakScope)
-        XCTAssertNil(weakSubscope)
-        XCTAssertNil(weakDescendantScope)
-    }
-
-    func testChangedSuperscopeRetains() {
-        let root2 = ScopeRoot()
-        var subscope: Scope? = Scope()
-        weak var weakSubscope = subscope
-        subscope!.attach(to: root)
-        subscope = nil
-        XCTAssertNotNil(weakSubscope)
-        weakSubscope?.attach(to: root2)
-        XCTAssertNotNil(weakSubscope)
-    }
-
-    func testNewSuperscopeOwnsLifecycle() {
-        let newSuperscope = Scope()
-        newSuperscope.attach(to: root)
-        newSuperscope.enable()
-        let subscope = ReportingScope()
-        subscope.attach(to: root)
-        subscope.enable()
-        XCTAssertEqual(subscope.willStartCount, 1)
-        XCTAssertEqual(subscope.willStopCount, 0)
-        subscope.attach(to: newSuperscope)
-        XCTAssertEqual(subscope.willStartCount, 1)
-        XCTAssertEqual(subscope.willStopCount, 0)
-        newSuperscope.disable()
-        XCTAssertEqual(subscope.willStartCount, 1)
-        XCTAssertEqual(subscope.willStopCount, 1)
-    }
-
-    func testNewSuperscopeRemovesPreviousSuperscopeChild() {
-        let oldSuperscope = Scope()
-        let subscope = Scope()
-        let newSuperscope = Scope()
-        oldSuperscope.attach(to: root)
-        newSuperscope.attach(to: root)
-        subscope.attach(to: oldSuperscope)
-        XCTAssert(oldSuperscope.subscopesSubject.value.first === subscope)
-        subscope.attach(to: newSuperscope)
-        XCTAssertNil(oldSuperscope.subscopesSubject.value.first)
-    }
-
-    func testActivationUpdatesSubscope() {
-        let scope = Scope()
-        scope.attach(to: root)
-        XCTAssert(!scope.externalIsActiveSubject.value)
-        scope.enable()
-        XCTAssert(scope.externalIsActiveSubject.value)
-    }
-
-    func testActivationUpdatesSubscopesRecursively() {
-        let scope = Scope()
-        let subscope = Scope()
-        scope.attach(to: root)
-        subscope.attach(to: scope)
-        subscope.enable()
-        XCTAssert(!subscope.externalIsActiveSubject.value)
-        scope.enable()
-        XCTAssert(subscope.externalIsActiveSubject.value)
-    }
-
-    func testActivationUpdatesMultipleSubscopes() {
-        let scope = Scope()
-        scope.attach(to: root)
-        let subscopes = [Scope(), Scope(), Scope()]
-        subscopes.forEach {
-            $0.enable()
-            $0.attach(to: scope)
+        var cancelCalled = false
+        let cancellable = AnyCancellable {
+            cancelCalled = true
         }
-        XCTAssert(
-            !subscopes
-                .map(\.externalIsActiveSubject.value)
-                .reduce(false) { $0 || $1 }
-        )
-        scope.enable()
-        XCTAssert(
-            subscopes
-                .map(\.externalIsActiveSubject.value)
-                .reduce(true) { $0 && $1 }
-        )
+        XCTAssertFalse(cancelCalled)
+        cancellable.store(in: &scope.whileActive)
+        XCTAssertTrue(cancelCalled)
     }
 
-    func testAttachmentToInactiveScopeDoesNotActivateScopes() {
+    func test_externalCancellable_isNotStoppedWhenAttached() {
         let scope = Scope()
-        scope.attach(to: root)
-        let subscope = Scope()
-        subscope.enable()
-        XCTAssert(!subscope.externalIsActiveSubject.value)
-        subscope.attach(to: scope)
-        XCTAssert(!subscope.externalIsActiveSubject.value)
+        scope.attach(to: host)
+        var cancelCalled = false
+        let cancellable = AnyCancellable {
+            cancelCalled = true
+        }
+        cancellable.store(in: &scope.whileActive)
+        XCTAssertFalse(cancelCalled)
     }
 
-    func testAttachmentToActiveScopeActivatesSubscope() {
+    func test_externalCancellable_stopsWhenDetached() {
         let scope = Scope()
-        scope.attach(to: root)
-        scope.enable()
-        let subscope = Scope()
-        subscope.enable()
-        XCTAssert(!subscope.externalIsActiveSubject.value)
-        subscope.attach(to: scope)
-        XCTAssert(subscope.externalIsActiveSubject.value)
+        scope.attach(to: host)
+        var cancelCalled = false
+        let cancellable = AnyCancellable {
+            cancelCalled = true
+        }
+        cancellable.store(in: &scope.whileActive)
+        XCTAssertFalse(cancelCalled)
+        scope.detach()
+        XCTAssertTrue(cancelCalled)
     }
 
-    func testDetachmentStopsScope() {
-        let subscope = Scope()
-        subscope.enable()
-        subscope.attach(to: root)
-        XCTAssert(subscope.externalIsActiveSubject.value)
-        subscope.detach()
-        XCTAssert(!subscope.externalIsActiveSubject.value)
+}
+
+final class TestIsActiveScope: Scope {
+    var isActive: Bool = false
+    override func willStart(cancellables: inout Set<AnyCancellable>) {
+        isActive = true
     }
-
-    func testStartCallsWillStart() {
-        let scope = ReportingScope()
-        scope.attach(to: root)
-        XCTAssertEqual(scope.willStartCount, 0)
-        scope.enable()
-        XCTAssertEqual(scope.willStartCount, 1)
+    override func didStop() {
+        isActive = false
     }
+}
 
-    func testStopCallsWillStopOnlyIfPreviouslyStarted() {
-        let scope = ReportingScope()
-        scope.attach(to: root)
-        scope.disable()
-        XCTAssertEqual(scope.willStopCount, 0)
-        scope.enable()
-        scope.disable()
-        XCTAssertEqual(scope.willStopCount, 1)
+final class LifecycleCallbackScope: Scope {
+    var willStartCallback: (() -> ())? = nil
+    var didStopCallback: (() -> ())? = nil
+    override func willStart(cancellables: inout Set<AnyCancellable>) {
+        willStartCallback?()
     }
-
-    func testStartTriggersSubscription() {
-        let rep = reportingPublisher(ReportingTestEvent.state)
-        let scope = ReportingScope(eventPublisher: rep.publisher)
-        scope.attach(to: root)
-        XCTAssertEqual(rep.subscriptionCallCount(), 0)
-        scope.enable()
-        XCTAssertEqual(rep.subscriptionCallCount(), 1)
+    override func didStop() {
+        didStopCallback?()
     }
+}
 
-    func testStartTriggersRequest() {
-        let rep = reportingPublisher(ReportingTestEvent.state)
-        let scope = ReportingScope(eventPublisher: rep.publisher)
-        scope.attach(to: root)
-        XCTAssertEqual(rep.requestCallCount(), 0)
-        scope.enable()
-        XCTAssertEqual(rep.requestCallCount(), 1)
+final class TestCancellableCalledScope: Scope {
+    var cancellableCalled: Bool = false
+    override func willStart(cancellables: inout Set<AnyCancellable>) {
+        AnyCancellable {
+            self.cancellableCalled = true
+        }.store(in: &cancellables)
     }
-
-    func testStartAllowsEvent() {
-        let rep = reportingPublisher(ReportingTestEvent.state)
-        let scope = ReportingScope(eventPublisher: rep.publisher)
-        scope.attach(to: root)
-        XCTAssertEqual(rep.eventCallCount(), 0)
-        scope.enable()
-        XCTAssertEqual(rep.eventCallCount(), 1)
-    }
-
-    func testStopTriggersCancel() {
-        let rep = reportingPublisher(ReportingTestEvent.state)
-        let scope = ReportingScope(eventPublisher: rep.publisher)
-        scope.attach(to: root)
-        scope.enable()
-        XCTAssertEqual(rep.cancelCallCount(), 0)
-        scope.disable()
-        XCTAssertEqual(rep.cancelCallCount(), 1)
-    }
-
-    func testAttachInsufficientToStart() {
-        let scope = ReportingScope()
-        scope.attach(to: root)
-        XCTAssertEqual(scope.willStartCount, 0)
-    }
-
-    func testStartedAttachStarts() {
-        let scope = ReportingScope()
-        scope.enable()
-        XCTAssertEqual(scope.willStartCount, 0)
-        scope.attach(to: root)
-        XCTAssertEqual(scope.willStartCount, 1)
-    }
-
-
-    func testWillStartCascadeBeginsAtSuperscope() {
-        var superscopeStarted = false
-        var subscopeStarted = false
-        let superscope = ReportingScope(start: {
-            XCTAssert(!subscopeStarted)
-            superscopeStarted = true
-        })
-        superscope.enable()
-        let subscope = ReportingScope(start: {
-            XCTAssert(superscopeStarted)
-            subscopeStarted = true
-        })
-        subscope.enable()
-        subscope.attach(to: superscope)
-        XCTAssert(!superscopeStarted)
-        XCTAssert(!subscopeStarted)
-        XCTAssert(!subscope.externalIsActiveSubject.value)
-        superscope.attach(to: root)
-        XCTAssert(subscope.externalIsActiveSubject.value)
-        XCTAssert(superscopeStarted)
-        XCTAssert(subscopeStarted)
-    }
-
-    func testWillStopCascadeBeginsAtSubscope() {
-        var superscopeStopped = false
-        var subscopeStopped = false
-        let superscope = ReportingScope(stop: {
-            XCTAssert(subscopeStopped)
-            superscopeStopped = true
-        })
-        superscope.enable()
-        let subscope = ReportingScope(stop: {
-            XCTAssert(!superscopeStopped)
-            subscopeStopped = true
-        })
-        subscope.attach(to: superscope)
-        superscope.attach(to: root)
-        subscope.enable()
-        superscope.enable()
-
-        XCTAssert(!superscopeStopped)
-        XCTAssert(!subscopeStopped)
-        XCTAssert(subscope.externalIsActiveSubject.value)
-        superscope.disable()
-        XCTAssert(!subscope.externalIsActiveSubject.value)
-        XCTAssert(subscopeStopped)
-        XCTAssert(superscopeStopped)
-    }
-
 }
