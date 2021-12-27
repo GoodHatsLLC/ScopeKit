@@ -52,10 +52,34 @@ open class Behavior {
 extension Behavior: ScopedBehavior {
 
     public func attach(to host: AnyScopeHosting) {
-        host.attachSubscopes([self.eraseToAnyScopedBehavior()])
-            .sink {
-                self.hostSubject.send(host.weakHandle)
+        hostPublisher
+            // first, keep track of any existing parent.
+            .first()
+            .map { potentialFormerParent in
+                // then attach self
+                // self could currently has two parents retaining it
+                host.attachSubscopes([self.eraseToAnyScopedBehavior()])
+                    // but pass any existing parent onwards
+                    .map { potentialFormerParent }
             }
+            .switchToLatest()
+            .handleEvents(receiveOutput: { _ in
+                // inform self of new parent
+                self.hostSubject.send(host.weakHandle)
+            })
+            // remove the case of no-former-parent
+            .compactMap { $0 }
+            // finally detach from the former parent to stop its retention
+            .map { formerParent in
+                // this call should trigger a `willDetach` call on `self`
+                // but the host from which we are detaching is not the current—
+                // so no action is taken
+                // see (1)
+                formerParent.detachSubscopes([self.eraseToAnyScopedBehavior()])
+            }
+            .switchToLatest()
+            .map { _ in () }
+            .sink {}
             .store(in: &internalCancellables)
     }
 
@@ -78,6 +102,7 @@ extension Behavior: ScopedBehavior {
         hostPublisher
             .first()
             .compactMap { $0 }
+            // (1) filter to remove any non-current parent callback.
             .filter { $0.underlying === host.underlying }
             .map { _ in () }
             .sink {
