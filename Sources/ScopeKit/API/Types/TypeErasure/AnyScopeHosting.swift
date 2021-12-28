@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-public struct AnyScopeHosting: ScopeHosting, Hashable {
+public struct AnyScopeHosting: Hashable {
 
     public static func == (lhs: AnyScopeHosting, rhs: AnyScopeHosting) -> Bool {
         lhs.underlying === rhs.underlying
@@ -14,19 +14,18 @@ public struct AnyScopeHosting: ScopeHosting, Hashable {
     private let attachFunc: ([AnyScopedBehavior]) -> Future<(), Never>
     private let detachFunc: ([AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never>
     private let detachAllFunc: () -> Future<[AnyScopedBehavior], Never>
-    public let weakHandle: WeakScopeHostingHandle
-    public let underlying: AnyObject
+    let statePublisher: AnyPublisher<ScopeState, Never>
+    let weakHandle: WeakScopeHostingHandle
+    let underlying: AnyObject
 
-    init<T: ScopeHosting>(_ type: T) {
-        self.statePublisher = type.statePublisher
-        self.attachFunc = { scopes in type.attachSubscopes(scopes) }
-        self.detachFunc = { scopes in type.detachSubscopes(scopes) }
-        self.detachAllFunc = { type.detachAllSubscopes() }
-        self.underlying = type.underlying
-        self.weakHandle = type.weakHandle
+    init<T>(_ concrete: T) where T: ScopeHosting, T: ScopeHostingInternal {
+        self.statePublisher = concrete.statePublisher
+        self.attachFunc = { scopes in concrete.attachSubscopes(scopes) }
+        self.detachFunc = { scopes in concrete.detachSubscopes(scopes) }
+        self.detachAllFunc = { concrete.detachAllSubscopes() }
+        self.underlying = concrete.underlying
+        self.weakHandle = concrete.weakHandle
     }
-
-    public let statePublisher: AnyPublisher<ScopeState, Never>
 
     public func attachSubscopes(_ subscopes: [AnyScopedBehavior]) -> Future<(), Never> {
         self.attachFunc(subscopes)
@@ -39,5 +38,12 @@ public struct AnyScopeHosting: ScopeHosting, Hashable {
     public func detachAllSubscopes() -> Future<[AnyScopedBehavior], Never> {
         self.detachAllFunc()
     }
-
 }
+
+extension AnyScopeHosting: ScopeHosting {
+    public func eraseToAnyScopeHosting() -> AnyScopeHosting {
+        self
+    }
+}
+
+extension AnyScopeHosting: ScopeHostingInternal {}

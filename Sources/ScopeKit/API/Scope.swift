@@ -16,10 +16,6 @@ open class Scope: Behavior {
             cancellable.cancel()
         }
     }
-
-    public override var statePublisher: AnyPublisher<ScopeState, Never> {
-        super.statePublisher
-    }
 }
 
 extension Scope: CancellableOwningWhileActive {
@@ -50,11 +46,8 @@ extension Scope: CancellableOwningWhileActive {
 
 extension Scope: ScopeHosting {
 
-    public var weakHandle: WeakScopeHostingHandle {
-        let weak = Weak(self)
-        return WeakScopeHostingHandle {
-            weak.value?.eraseToAnyScopeHosting()
-        }
+    public func eraseToAnyScopeHosting() -> AnyScopeHosting {
+        AnyScopeHosting(self)
     }
 
     public func attachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<(), Never> {
@@ -68,4 +61,15 @@ extension Scope: ScopeHosting {
     public func detachAllSubscopes() -> Future<[AnyScopedBehavior], Never> {
         hostComponent.detachAllSubscopes(from: self.eraseToAnyScopeHosting())
     }
+}
+
+extension Scope: ScopeHostingInternal {
+
+    var weakHandle: WeakScopeHostingHandle {
+        let weak = Weak(self)
+        return WeakScopeHostingHandle {
+            weak.value?.eraseToAnyScopeHosting()
+        }
+    }
+
 }
