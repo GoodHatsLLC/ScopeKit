@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-public final class ScopeHost {
+public final class RootScope {
 
     let hostComponent: HostComponent
 
@@ -11,7 +11,7 @@ public final class ScopeHost {
 
 }
 
-extension ScopeHost: ScopeHosting {
+extension RootScope: ScopeHosting {
     public var weakHandle: WeakScopeHostingHandle {
         let weak = Weak(self)
         return WeakScopeHostingHandle {

@@ -8,7 +8,7 @@ open class Behavior {
     private let hostSubject = CurrentValueSubject<WeakScopeHostingHandle?, Never>(nil)
     var internalCancellables = Set<AnyCancellable>()
 
-    init() {
+    public init() {
         manageBehaviorLifecycle()
     }
 
@@ -192,4 +192,10 @@ extension Behavior {
         didStop()
     }
 
+}
+
+extension Behavior {
+    public func attach<HostType: ScopeHosting>(to host: HostType) {
+        self.attach(to: host.eraseToAnyScopeHosting())
+    }
 }
