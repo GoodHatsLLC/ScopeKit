@@ -4,59 +4,50 @@ import ScopeKit
 
 final class ScopeTests: XCTestCase {
 
-    var host: ScopeHost!
+    static var runner = {
+        BehaviorTestRunner(
+            behaviorBuilder: { Scope() },
+            lifecycleCallbackBehaviorBuilder: { LifecycleCallbackScope() }
+        )
+    }
+
+    var root: RootScope!
 
     override func setUp() {
-        host = ScopeHost()
+        root = RootScope()
     }
 
     override func tearDown() {
-        host = nil
+        root = nil
     }
 
     // MARK: - Retain behavior
 
     func test_noRetain_onInit() {
-        weak var weakScope: Scope? = nil
-        autoreleasepool {
-            let strongScope = Scope()
-            weakScope = strongScope
-            XCTAssertNotNil(weakScope)
-        }
-        XCTAssertNil(weakScope)
+        Self.runner().test_noRetain_onInit()
     }
 
     func test_noRelease_whenAttached() {
-        weak var weakScope: Scope? = nil
-        autoreleasepool {
-            {
-                let scope = Scope()
-                weakScope = scope
-                scope.attach(to: host)
-            }()
-        }
-        XCTAssertNotNil(weakScope)
+        Self.runner().test_noRelease_whenAttached()
     }
 
     func test_noRetain_onceDetached() {
-        weak var weakScope: Scope? = nil
-        autoreleasepool {
-            {
-                let scope = Scope()
-                weakScope = scope
-                scope.attach(to: host)
-            }()
-            XCTAssertNotNil(weakScope)
-            weakScope?.detach()
-        }
-        XCTAssertNil(weakScope)
+        Self.runner().test_noRetain_onceDetached()
+    }
+
+    func test_noRetain_WhenRootIsUnreferenced() {
+        Self.runner().test_noRetain_WhenRootIsUnreferenced()
+    }
+
+    func test_noRetain_byFormerParentOnReparent() {
+        Self.runner().test_noRetain_byFormerParentOnReparent()
     }
 
     func test_noRetain_betweenUnreferencedAttachedScopes() {
-        weak var weakHost: ScopeHost? = nil
+        weak var weakHost: RootScope? = nil
         weak var weakScope: Scope? = nil
         autoreleasepool {
-            let host = ScopeHost()
+            let host = RootScope()
             weakHost = host
             let scope = Scope()
             weakScope = scope
@@ -68,97 +59,67 @@ final class ScopeTests: XCTestCase {
         XCTAssertNil(weakScope)
     }
 
-    func test_noRetain_byFormerParentOnReparent() {
-        let host2 = ScopeHost()
-        weak var weakScope: Scope? = nil
-        autoreleasepool {
-            let scope = Scope()
-            weakScope = scope
-            scope.attach(to: host)
-            scope.attach(to: host2)
-            scope.detach()
-        }
-        XCTAssertNil(weakScope)
-    }
-
     // MARK: - willStart/didStop
 
     func test_willStartCalled_onAttach() {
-        let scope = TestIsActiveScope()
-        XCTAssertFalse(scope.isActive)
-        scope.attach(to: host)
-        XCTAssertTrue(scope.isActive)
+        Self.runner().test_willStartCalled_onAttach()
     }
 
     func test_didStopCalled_onDetach() {
-        let scope = TestIsActiveScope()
-        scope.attach(to: host)
-        XCTAssertTrue(scope.isActive)
-        scope.detach()
-        XCTAssertFalse(scope.isActive)
+        Self.runner().test_didStopCalled_onDetach()
     }
 
     func test_willStartCalled_onReattach() {
-        let scope = TestIsActiveScope()
-        scope.attach(to: host)
-        scope.detach()
-        XCTAssertFalse(scope.isActive)
-        scope.attach(to: host)
-        XCTAssertTrue(scope.isActive)
+        Self.runner().test_willStartCalled_onReattach()
     }
 
     func test_didStopNotCalled_onReparent() {
-        let host2 = ScopeHost()
-        let scope = LifecycleCallbackScope()
-        var didStop = false
-        scope.didStopCallback = { didStop = true }
-        scope.attach(to: host)
-        XCTAssertFalse(didStop)
-        scope.attach(to: host2)
-        XCTAssertFalse(didStop)
+        Self.runner().test_didStopNotCalled_onReparent()
     }
 
     // MARK: - Cancellable
 
     func test_cancellableCalled_onDetach() {
-        let scope = TestCancellableCalledScope()
-        scope.attach(to: host)
-        XCTAssertFalse(scope.cancellableCalled)
-        scope.detach()
-        XCTAssertTrue(scope.cancellableCalled)
+        Self.runner().test_cancellableCalled_onDetach()
     }
 
     // MARK: - Attachment cascading behavior
 
     func test_scopeAttachmentCascades_onAttach() {
-        let root = Scope()
+        let zero = Scope()
         let one = Scope()
-        one.attach(to: root)
+        one.attach(to: zero)
         let two = Scope()
         two.attach(to: one)
         let three = Scope()
         three.attach(to: two)
-        let test = TestIsActiveScope()
+        let test = LifecycleCallbackScope()
+        var isActive = false
+        test.didStopCallback = { isActive = false }
+        test.willStartCallback = { isActive = true }
         test.attach(to: three)
-        XCTAssertFalse(test.isActive)
-        root.attach(to: host)
-        XCTAssertTrue(test.isActive)
+        XCTAssertFalse(isActive)
+        zero.attach(to: root)
+        XCTAssertTrue(isActive)
     }
 
     func test_scopeAttachmentCascades_onDetach() {
-        let root = Scope()
-        root.attach(to: host)
+        let zero = Scope()
+        zero.attach(to: root)
         let one = Scope()
-        one.attach(to: root)
+        one.attach(to: zero)
         let two = Scope()
         two.attach(to: one)
         let three = Scope()
         three.attach(to: two)
-        let test = TestIsActiveScope()
+        let test = LifecycleCallbackScope()
+        var isActive = false
+        test.didStopCallback = { isActive = false }
+        test.willStartCallback = { isActive = true }
         test.attach(to: three)
-        XCTAssertTrue(test.isActive)
-        root.detach()
-        XCTAssertFalse(test.isActive)
+        XCTAssertTrue(isActive)
+        zero.detach()
+        XCTAssertFalse(isActive)
     }
 
     // MARK: - External cancellable behavior
@@ -176,7 +137,7 @@ final class ScopeTests: XCTestCase {
 
     func test_externalCancellable_isNotStoppedWhenAttached() {
         let scope = Scope()
-        scope.attach(to: host)
+        scope.attach(to: root)
         var cancelCalled = false
         let cancellable = AnyCancellable {
             cancelCalled = true
@@ -187,7 +148,7 @@ final class ScopeTests: XCTestCase {
 
     func test_externalCancellable_stopsWhenDetached() {
         let scope = Scope()
-        scope.attach(to: host)
+        scope.attach(to: root)
         var cancelCalled = false
         let cancellable = AnyCancellable {
             cancelCalled = true
@@ -200,32 +161,17 @@ final class ScopeTests: XCTestCase {
 
 }
 
-final class TestIsActiveScope: Scope {
-    var isActive: Bool = false
-    override func willStart(cancellables: inout Set<AnyCancellable>) {
-        isActive = true
-    }
-    override func didStop() {
-        isActive = false
-    }
-}
+open class LifecycleCallbackScope: LifecycleCallbackBehavior {
 
-final class LifecycleCallbackScope: Scope {
-    var willStartCallback: (() -> ())? = nil
-    var didStopCallback: (() -> ())? = nil
-    override func willStart(cancellables: inout Set<AnyCancellable>) {
+    override open func willStart(cancellables: inout Set<AnyCancellable>) {
         willStartCallback?()
-    }
-    override func didStop() {
-        didStopCallback?()
-    }
-}
-
-final class TestCancellableCalledScope: Scope {
-    var cancellableCalled: Bool = false
-    override func willStart(cancellables: inout Set<AnyCancellable>) {
-        AnyCancellable {
-            self.cancellableCalled = true
+        AnyCancellable { [weak self] in
+            guard let self = self else { return }
+            self.cancelCallback?()
         }.store(in: &cancellables)
+    }
+
+    override open func didStop() {
+        didStopCallback?()
     }
 }

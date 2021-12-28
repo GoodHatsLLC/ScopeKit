@@ -69,9 +69,3 @@ extension Scope: ScopeHosting {
         hostComponent.detachAllSubscopes(from: self.eraseToAnyScopeHosting())
     }
 }
-
-extension Scope {
-    public func attach<HostType: ScopeHosting>(to host: HostType) {
-        self.attach(to: host.eraseToAnyScopeHosting())
-    }
-}
