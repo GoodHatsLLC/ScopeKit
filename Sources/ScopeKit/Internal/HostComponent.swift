@@ -11,8 +11,8 @@ final class HostComponent {
 
 extension HostComponent {
 
-    var statePublisher: AnyPublisher<ScopeState, Never> {
-        Just(ScopeState.attached).eraseToAnyPublisher()
+    var statePublisher: AnyPublisher<ActivityState, Never> {
+        Just(ActivityState.active).eraseToAnyPublisher()
     }
 
     func detachAllSubscopes(from owner: AnyScopeHosting) -> Future<[AnyScopedBehavior], Never> {

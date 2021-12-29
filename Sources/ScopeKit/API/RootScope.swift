@@ -32,7 +32,7 @@ extension RootScope: ScopeHosting {
 
 extension RootScope: ScopeHostingInternal {
 
-    var statePublisher: AnyPublisher<ScopeState, Never> {
+    var statePublisher: AnyPublisher<ActivityState, Never> {
         hostComponent.statePublisher
     }
 

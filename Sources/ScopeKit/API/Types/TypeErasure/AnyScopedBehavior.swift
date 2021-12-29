@@ -16,7 +16,7 @@ public struct AnyScopedBehavior: Hashable {
     private let willDetachFunc: (AnyScopeHosting) -> ()
     private let attachFunc: (AnyScopeHosting) -> (Future<(), AttachmentError>)
     private let detachFunc: () -> (Future<(), AttachmentError>)
-    private let stateFunc: () -> ScopeState
+    private let stateFunc: () -> ActivityState
     let underlying: AnyObject
 
     init<T>(from concrete: T) where T: ScopedBehavior, T: ScopedBehaviorInternal {
@@ -30,7 +30,7 @@ public struct AnyScopedBehavior: Hashable {
 }
 
 extension AnyScopedBehavior: ScopedBehavior {
-    public var state: ScopeState {
+    public var state: ActivityState {
         stateFunc()
     }
 

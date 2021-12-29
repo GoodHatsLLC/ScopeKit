@@ -32,7 +32,7 @@ extension Scope: ReceiverListener {
     func cancelExternalCancellablesIfNotActive() {
         statePublisher
             .first()
-            .filter { $0 == .detached }
+            .filter { $0 != .active }
             .map { _ in () }
             .sink {
                 self.externalCancellables.forEach { cancellable in

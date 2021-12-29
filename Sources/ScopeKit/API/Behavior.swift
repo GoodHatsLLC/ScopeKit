@@ -4,7 +4,7 @@ import Foundation
 open class Behavior {
 
     private var behaviorCancellable: AnyCancellable?
-    private let stateMulticastSubject = CurrentValueSubject<ScopeState, Never>(.detached)
+    private let stateMulticastSubject = CurrentValueSubject<ActivityState, Never>(.inactive)
     private let hostSubject = CurrentValueSubject<WeakScopeHostingHandle?, Never>(nil)
     var internalCancellables = Set<AnyCancellable>()
 
@@ -35,7 +35,7 @@ extension Behavior {
 
     private func manageBehaviorLifecycle() {
         let isActive = statePublisher
-            .map { $0 == .attached }
+            .map { $0 == .active }
             .removeDuplicates()
 
         let becameActive = isActive
@@ -106,7 +106,7 @@ extension Behavior {
 // MARK: - ScopedBehavior
 extension Behavior: ScopedBehavior {
 
-    public var state: ScopeState {
+    public var state: ActivityState {
         stateMulticastSubject.value
     }
 
@@ -195,10 +195,9 @@ extension Behavior: ScopedBehaviorInternal {
         hostSubject.send(host.weakHandle)
     }
 
-    var statePublisher: AnyPublisher<ScopeState, Never> {
+    var statePublisher: AnyPublisher<ActivityState, Never> {
         let isDirectlyDetached = hostPublisher
-            .filter { $0 == nil }
-            .map { _ in ScopeState.detached }
+            .map { $0 == nil }
 
         let directSuperScopeStatePublisher = hostPublisher
             .compactMap { $0 }
@@ -207,9 +206,21 @@ extension Behavior: ScopedBehaviorInternal {
             }
             .switchToLatest()
 
-        return Publishers.Merge(isDirectlyDetached,
-                                directSuperScopeStatePublisher)
-            .removeDuplicates()
+        let ownStatePublisher = Publishers.CombineLatest(
+            isDirectlyDetached,
+            directSuperScopeStatePublisher
+        ).map { isDirectlyDetached, superScopeState -> ActivityState in
+            switch (isDirectlyDetached, superScopeState) {
+            case (true, _):
+                return ActivityState.inactive
+            case (false, .active):
+                return ActivityState.active
+            case (false, _):
+                return ActivityState.paused
+            }
+        }
+
+        return ownStatePublisher
             .multicast(subject: stateMulticastSubject)
             .autoconnect()
             .eraseToAnyPublisher()
