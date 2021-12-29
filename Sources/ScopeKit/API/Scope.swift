@@ -18,15 +18,15 @@ open class Scope: Behavior {
     }
 }
 
-extension Scope: CancellableOwningWhileActive {
-    public var whileActive: Set<AnyCancellable> {
-        get {
-            Set<AnyCancellable>()
-        }
-        set {
-            externalCancellables.formUnion(newValue)
-            cancelExternalCancellablesIfNotActive()
-        }
+extension Scope: ReceiverListener {
+
+    func receiveProxied(cancellables: Set<AnyCancellable>) {
+        externalCancellables.formUnion(cancellables)
+        cancelExternalCancellablesIfNotActive()
+    }
+
+    public var storeWhileActive: CancellableReceiver {
+        CancellableReceiver(listener: self)
     }
 
     func cancelExternalCancellablesIfNotActive() {
