@@ -131,7 +131,7 @@ final class ScopeTests: XCTestCase {
             cancelCalled = true
         }
         XCTAssertFalse(cancelCalled)
-        cancellable.store(in: &scope.whileActive)
+        cancellable.store(in: &scope.storeWhileActive.cancellables)
         XCTAssertTrue(cancelCalled)
     }
 
@@ -142,7 +142,7 @@ final class ScopeTests: XCTestCase {
         let cancellable = AnyCancellable {
             cancelCalled = true
         }
-        cancellable.store(in: &scope.whileActive)
+        cancellable.store(in: &scope.storeWhileActive.cancellables)
         XCTAssertFalse(cancelCalled)
     }
 
@@ -153,7 +153,7 @@ final class ScopeTests: XCTestCase {
         let cancellable = AnyCancellable {
             cancelCalled = true
         }
-        cancellable.store(in: &scope.whileActive)
+        cancellable.store(in: &scope.storeWhileActive.cancellables)
         XCTAssertFalse(cancelCalled)
         scope.detach()
         XCTAssertTrue(cancelCalled)
