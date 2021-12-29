@@ -20,13 +20,21 @@ open class Behavior {
         self.attach(to: host.eraseToAnyScopeHosting())
     }
 
-    /// Behavior to be extended by subclass.
-    /// Note: `super` call is not required.
+    /// Called before the Behavior/Scope is attached to a superscope. Always called before activation.
+    /// Behavior to be extended by subclass.`super` call is not required.
+    open func willAttach() {}
+
+    /// Called before the Behavior/Scope is activated.
+    /// Behavior to be extended by subclass.`super` call is not required.
     open func willStart(cancellables: inout Set<AnyCancellable>) {}
 
-    /// Notification of stop.
-    /// Note: `super` call is not required.
+    /// Called after the Behavior/Scope is stopped—either when it's directly detached or when an ancestor is no longer attached.
+    /// Behavior to be extended by subclass.`super` call is not required.
     open func didStop() {}
+
+    /// Called when the Behavior/Scope is detached from its superscope.
+    /// Behavior to be extended by subclass.`super` call is not required.
+    open func didDetach() {}
 
 }
 
