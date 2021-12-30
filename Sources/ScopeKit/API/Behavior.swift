@@ -78,6 +78,9 @@ extension Behavior {
                     assertionFailure("unexpected state transition")
                     break
                 }
+                // We can't use dispatchPrecondition since we don't want to crash
+                // consumers in -O / production builds.
+                assert(Thread.isMainThread, "ScopeKit state changes should happen on the main thread.")
             }
             .store(in: &internalCancellables)
     }
