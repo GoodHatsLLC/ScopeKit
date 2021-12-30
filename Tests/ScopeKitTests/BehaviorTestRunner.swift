@@ -16,6 +16,20 @@ final class BehaviorTestRunner {
         self.lifecycleCallbackBehaviorBuilder = lifecycleCallbackBehaviorBuilder
     }
 
+    // MARK: - Thread check
+
+    func test_assertMainThread_onLifecycleCalls() {
+        let provider = TestInjectionProvider()
+        XCTAssertEqual(provider.assertMessageSubject.value.count, 0)
+        Injection.with(provider: provider) {
+            let behavior = self.behaviorBuilder()
+            _ = DispatchQueue.global().sync(flags: .barrier) {
+                behavior.attach(to: self.root)
+            }
+        }
+        XCTAssertGreaterThan(provider.assertMessageSubject.value.count, 0)
+    }
+
     // MARK: - Retain behavior
 
     func test_noRetain_onInit() {

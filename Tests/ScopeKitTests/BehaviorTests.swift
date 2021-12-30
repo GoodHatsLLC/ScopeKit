@@ -21,6 +21,12 @@ final class BehaviorTests: XCTestCase {
         root = nil
     }
 
+    // MARK: - Thread check
+
+    func test_assertMainThread_onLifecycleCalls() {
+        Self.runner().test_assertMainThread_onLifecycleCalls()
+    }
+
     // MARK: - Retain behavior
 
     func test_noRetain_onInit() {
