@@ -11,7 +11,7 @@ open class Scope: Behavior {
         super.init()
     }
 
-    final override func willStop() {
+    final override func willDeactivate() {
         externalCancellables.forEach { cancellable in
             cancellable.cancel()
         }

@@ -83,13 +83,13 @@ final class BehaviorTestRunner {
         XCTAssertNil(weakBehavior)
     }
 
-    // MARK: - willStart/didStop
+    // MARK: - willStart/didDeactivate
 
     func test_willStartCalled_onAttach() {
         let behavior = self.lifecycleCallbackBehaviorBuilder()
         var isActive = false
-        behavior.didStopCallback = { isActive = false }
-        behavior.willStartCallback = { isActive = true }
+        behavior.didDeactivateCallback = { isActive = false }
+        behavior.willActivateCallback = { isActive = true }
         XCTAssertFalse(isActive)
         behavior.attach(to: root)
         XCTAssertTrue(isActive)
@@ -98,8 +98,8 @@ final class BehaviorTestRunner {
     func test_didStopCalled_onDetach() {
         let behavior = self.lifecycleCallbackBehaviorBuilder()
         var isActive = false
-        behavior.didStopCallback = { isActive = false }
-        behavior.willStartCallback = { isActive = true }
+        behavior.didDeactivateCallback = { isActive = false }
+        behavior.willActivateCallback = { isActive = true }
         behavior.attach(to: root)
         XCTAssertTrue(isActive)
         behavior.detach()
@@ -109,8 +109,8 @@ final class BehaviorTestRunner {
     func test_willStartCalled_onReattach() {
         let behavior = self.lifecycleCallbackBehaviorBuilder()
         var isActive = false
-        behavior.didStopCallback = { isActive = false }
-        behavior.willStartCallback = { isActive = true }
+        behavior.didDeactivateCallback = { isActive = false }
+        behavior.willActivateCallback = { isActive = true }
         behavior.attach(to: root)
         behavior.detach()
         XCTAssertFalse(isActive)
@@ -122,7 +122,7 @@ final class BehaviorTestRunner {
         let root2 = RootScope()
         let behavior = self.lifecycleCallbackBehaviorBuilder()
         var didStop = false
-        behavior.didStopCallback = { didStop = true }
+        behavior.didDeactivateCallback = { didStop = true }
         behavior.attach(to: root)
         XCTAssertFalse(didStop)
         behavior.attach(to: root2)

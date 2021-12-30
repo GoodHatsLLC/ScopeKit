@@ -59,7 +59,7 @@ final class ScopeTests: XCTestCase {
         XCTAssertNil(weakScope)
     }
 
-    // MARK: - willStart/didStop
+    // MARK: - willStart/didDeactivate
 
     func test_willStartCalled_onAttach() {
         Self.runner().test_willStartCalled_onAttach()
@@ -95,8 +95,8 @@ final class ScopeTests: XCTestCase {
         three.attach(to: two)
         let test = LifecycleCallbackScope()
         var isActive = false
-        test.didStopCallback = { isActive = false }
-        test.willStartCallback = { isActive = true }
+        test.didDeactivateCallback = { isActive = false }
+        test.willActivateCallback = { isActive = true }
         test.attach(to: three)
         XCTAssertFalse(isActive)
         zero.attach(to: root)
@@ -114,8 +114,8 @@ final class ScopeTests: XCTestCase {
         three.attach(to: two)
         let test = LifecycleCallbackScope()
         var isActive = false
-        test.didStopCallback = { isActive = false }
-        test.willStartCallback = { isActive = true }
+        test.didDeactivateCallback = { isActive = false }
+        test.willActivateCallback = { isActive = true }
         test.attach(to: three)
         XCTAssertTrue(isActive)
         zero.detach()
@@ -163,15 +163,15 @@ final class ScopeTests: XCTestCase {
 
 open class LifecycleCallbackScope: LifecycleCallbackBehavior {
 
-    override open func willStart(cancellables: inout Set<AnyCancellable>) {
-        willStartCallback?()
+    override open func willActivate(cancellables: inout Set<AnyCancellable>) {
+        willActivateCallback?()
         AnyCancellable { [weak self] in
             guard let self = self else { return }
             self.cancelCallback?()
         }.store(in: &cancellables)
     }
 
-    override open func didStop() {
-        didStopCallback?()
+    override open func didDeactivate() {
+        didDeactivateCallback?()
     }
 }

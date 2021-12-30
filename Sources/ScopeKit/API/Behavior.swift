@@ -3,17 +3,19 @@ import Foundation
 
 open class Behavior {
 
+    private struct StateTransition: Equatable {
+        let previous: ActivityState?
+        let current: ActivityState?
+    }
+
     private var behaviorCancellable: AnyCancellable?
-    private let stateMulticastSubject = CurrentValueSubject<ActivityState, Never>(.inactive)
+    private let stateMulticastSubject = CurrentValueSubject<ActivityState, Never>(.detached)
     private let hostSubject = CurrentValueSubject<WeakScopeHostingHandle?, Never>(nil)
     var internalCancellables = Set<AnyCancellable>()
 
     public init() {
         manageBehaviorLifecycle()
     }
-
-    /// overridden only internally.
-    func willStop(){}
 
     @discardableResult
     public final func attach<HostType: ScopeHosting>(to host: HostType) -> Future<(), AttachmentError> {
@@ -26,11 +28,17 @@ open class Behavior {
 
     /// Called before the Behavior/Scope is activated.
     /// Behavior to be extended by subclass.`super` call is not required.
-    open func willStart(cancellables: inout Set<AnyCancellable>) {}
+    open func willActivate(cancellables: inout Set<AnyCancellable>) {}
+
+    /// overridden only internally.
+    func didActivate() {}
+
+    /// overridden only internally.
+    func willDeactivate() {}
 
     /// Called after the Behavior/Scope is stopped—either when it's directly detached or when an ancestor is no longer attached.
     /// Behavior to be extended by subclass.`super` call is not required.
-    open func didStop() {}
+    open func didDeactivate() {}
 
     /// Called when the Behavior/Scope is detached from its superscope.
     /// Behavior to be extended by subclass.`super` call is not required.
@@ -42,33 +50,34 @@ open class Behavior {
 extension Behavior {
 
     private func manageBehaviorLifecycle() {
-        let isActive = statePublisher
-            .map { $0 == .active }
+
+        statePublisher
             .removeDuplicates()
-
-        let becameActive = isActive
-            .filter { $0 == true }
-            .map { _ in () }
-
-        let becameInactive = isActive
-            .filter { $0 == false }
-            .map { _ in () }
-
-        becameActive
-            .sink { [weak self] in
-                guard let self = self else {
-                    return
+            .scan(StateTransition(previous: nil, current: nil)) { previousTransition, currentState in
+                StateTransition(previous: previousTransition.current, current: currentState)
+            }.sink { [weak self] transition in
+                guard let self = self else { return }
+                switch (transition.previous, transition.current) {
+                case (nil, .detached):
+                    break
+                case (.detached, .attached):
+                    self.willAttach()
+                case (.detached, .active):
+                    self.willAttach()
+                    self.start()
+                case (.attached, .active):
+                    self.start()
+                case (.active, .attached):
+                    self.stop()
+                case (.active, .detached):
+                    self.stop()
+                    self.didDetach()
+                case (.attached, .detached):
+                    self.didDetach()
+                default:
+                    assertionFailure("unexpected state transition")
+                    break
                 }
-                self.start()
-            }
-            .store(in: &internalCancellables)
-
-        becameInactive
-            .sink { [weak self] in
-                guard let self = self else {
-                    return
-                }
-                self.stop()
             }
             .store(in: &internalCancellables)
     }
@@ -90,23 +99,25 @@ extension Behavior {
     private func start() {
         var cancellables = Set<AnyCancellable>()
 
-        willStart(cancellables: &cancellables)
+        willActivate(cancellables: &cancellables)
 
         behaviorCancellable = AnyCancellable {
             cancellables.forEach { cancellable in
                 cancellable.cancel()
             }
         }
+
+        didActivate()
     }
 
     private func stop() {
-        willStop()
+        willDeactivate()
 
         // Cancel explicitly in case of consumer retention.
         behaviorCancellable?.cancel()
         behaviorCancellable = nil
 
-        didStop()
+        didDeactivate()
     }
 
 }
@@ -220,11 +231,11 @@ extension Behavior: ScopedBehaviorInternal {
         ).map { isDirectlyDetached, superScopeState -> ActivityState in
             switch (isDirectlyDetached, superScopeState) {
             case (true, _):
-                return ActivityState.inactive
+                return ActivityState.detached
             case (false, .active):
                 return ActivityState.active
             case (false, _):
-                return ActivityState.paused
+                return ActivityState.attached
             }
         }
 

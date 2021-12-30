@@ -70,17 +70,28 @@ final class BehaviorTests: XCTestCase {
 
 open class LifecycleCallbackBehavior: Behavior {
 
-    var willStartCallback: (() -> ())? = nil
-    var didStopCallback: (() -> ())? = nil
+    var willAttachCallback: (() -> ())? = nil
+    var willActivateCallback: (() -> ())? = nil
+    var didDeactivateCallback: (() -> ())? = nil
+    var didDetachCallback: (() -> ())? = nil
     var cancelCallback: (() -> ())? = nil
 
-    override open func willStart(cancellables: inout Set<AnyCancellable>) {
-        willStartCallback?()
+    override open func willAttach() {
+        willAttachCallback?()
+    }
+
+    override open func willActivate(cancellables: inout Set<AnyCancellable>) {
+        willActivateCallback?()
         AnyCancellable {
             self.cancelCallback?()
         }.store(in: &cancellables)
     }
-    override open func didStop() {
-        didStopCallback?()
+
+    override open func didDeactivate() {
+        didDeactivateCallback?()
+    }
+
+    override open func didDetach() {
+        didDetachCallback?()
     }
 }
