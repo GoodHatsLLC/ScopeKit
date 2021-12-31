@@ -24,14 +24,15 @@ final class BehaviorTestRunner {
         let incremented = { () -> Int in hitCounter += 1; return hitCounter }
         testBehavior.willAttachCallback = { XCTAssertEqual(incremented(), 1) }
         testBehavior.willActivateCallback = { XCTAssertEqual(incremented(), 2) }
-        testBehavior.didDeactivateCallback = { XCTAssertEqual(incremented(), 3) }
-        testBehavior.didDetachCallback = { XCTAssertEqual(incremented(), 4) }
+        testBehavior.cancelCallback = { XCTAssertEqual(incremented(), 3) }
+        testBehavior.didDeactivateCallback = { XCTAssertEqual(incremented(), 4) }
+        testBehavior.didDetachCallback = { XCTAssertEqual(incremented(), 5) }
 
         testBehavior.attach(to: root)
 
         testBehavior.detach()
 
-        XCTAssertEqual(hitCounter, 4)
+        XCTAssertEqual(hitCounter, 5)
     }
 
 
