@@ -21,6 +21,12 @@ final class BehaviorTests: XCTestCase {
         root = nil
     }
 
+    // MARK: - Lifecycle call order
+
+    func test_lifecycleCalls_onAttach() {
+        Self.runner().test_lifecycleCalls_onAttach()
+    }
+
     // MARK: - Thread check
 
     func test_assertMainThread_onLifecycleCalls() {

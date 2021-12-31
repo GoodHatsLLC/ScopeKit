@@ -21,33 +21,24 @@ final class ScopeTests: XCTestCase {
         root = nil
     }
 
-    // MARK: - Thread check
+    // MARK: - Behavior tests
 
-    func test_assertMainThread_onLifecycleCalls() {
+    func test_scope_passesBehaviorTests() {
+        Self.runner().test_lifecycleCalls_onAttach()
         Self.runner().test_assertMainThread_onLifecycleCalls()
+        Self.runner().test_noRetain_onInit()
+        Self.runner().test_noRelease_whenAttached()
+        Self.runner().test_noRetain_onceDetached()
+        Self.runner().test_noRetain_WhenRootIsUnreferenced()
+        Self.runner().test_noRetain_byFormerParentOnReparent()
+        Self.runner().test_willStartCalled_onAttach()
+        Self.runner().test_didStopCalled_onDetach()
+        Self.runner().test_willStartCalled_onReattach()
+        Self.runner().test_didStopNotCalled_onReparent()
+        Self.runner().test_cancellableCalled_onDetach()
     }
 
     // MARK: - Retain behavior
-
-    func test_noRetain_onInit() {
-        Self.runner().test_noRetain_onInit()
-    }
-
-    func test_noRelease_whenAttached() {
-        Self.runner().test_noRelease_whenAttached()
-    }
-
-    func test_noRetain_onceDetached() {
-        Self.runner().test_noRetain_onceDetached()
-    }
-
-    func test_noRetain_WhenRootIsUnreferenced() {
-        Self.runner().test_noRetain_WhenRootIsUnreferenced()
-    }
-
-    func test_noRetain_byFormerParentOnReparent() {
-        Self.runner().test_noRetain_byFormerParentOnReparent()
-    }
 
     func test_noRetain_betweenUnreferencedAttachedScopes() {
         weak var weakHost: RootScope? = nil
@@ -63,30 +54,6 @@ final class ScopeTests: XCTestCase {
         }
         XCTAssertNil(weakHost)
         XCTAssertNil(weakScope)
-    }
-
-    // MARK: - willStart/didDeactivate
-
-    func test_willStartCalled_onAttach() {
-        Self.runner().test_willStartCalled_onAttach()
-    }
-
-    func test_didStopCalled_onDetach() {
-        Self.runner().test_didStopCalled_onDetach()
-    }
-
-    func test_willStartCalled_onReattach() {
-        Self.runner().test_willStartCalled_onReattach()
-    }
-
-    func test_didStopNotCalled_onReparent() {
-        Self.runner().test_didStopNotCalled_onReparent()
-    }
-
-    // MARK: - Cancellable
-
-    func test_cancellableCalled_onDetach() {
-        Self.runner().test_cancellableCalled_onDetach()
     }
 
     // MARK: - Attachment cascading behavior

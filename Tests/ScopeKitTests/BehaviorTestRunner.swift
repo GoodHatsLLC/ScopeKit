@@ -16,6 +16,25 @@ final class BehaviorTestRunner {
         self.lifecycleCallbackBehaviorBuilder = lifecycleCallbackBehaviorBuilder
     }
 
+    // MARK: - Lifecycle call order
+
+    func test_lifecycleCalls_onAttach() {
+        let testBehavior = lifecycleCallbackBehaviorBuilder()
+        var hitCounter = 0
+        let incremented = { () -> Int in hitCounter += 1; return hitCounter }
+        testBehavior.willAttachCallback = { XCTAssertEqual(incremented(), 1) }
+        testBehavior.willActivateCallback = { XCTAssertEqual(incremented(), 2) }
+        testBehavior.didDeactivateCallback = { XCTAssertEqual(incremented(), 3) }
+        testBehavior.didDetachCallback = { XCTAssertEqual(incremented(), 4) }
+
+        testBehavior.attach(to: root)
+
+        testBehavior.detach()
+
+        XCTAssertEqual(hitCounter, 4)
+    }
+
+
     // MARK: - Thread check
 
     func test_assertMainThread_onLifecycleCalls() {
