@@ -65,9 +65,9 @@ extension Scope: ScopeHosting {
 
 extension Scope: ScopeHostingInternal {
 
-    var weakHandle: WeakScopeHostingHandle {
+    var weakHandle: ErasedProvider<AnyScopeHosting?> {
         let weak = Weak(self)
-        return WeakScopeHostingHandle {
+        return ErasedProvider {
             weak.value?.eraseToAnyScopeHosting()
         }
     }

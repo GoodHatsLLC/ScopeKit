@@ -10,7 +10,7 @@ open class Behavior {
 
     private var behaviorCancellable: AnyCancellable?
     private let stateMulticastSubject = CurrentValueSubject<ActivityState, Never>(.detached)
-    private let hostSubject = CurrentValueSubject<WeakScopeHostingHandle?, Never>(nil)
+    private let hostSubject = CurrentValueSubject<ErasedProvider<AnyScopeHosting?>?, Never>(nil)
     var internalCancellables = Set<AnyCancellable>()
 
     public init() {

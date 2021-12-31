@@ -36,9 +36,9 @@ extension RootScope: ScopeHostingInternal {
         hostComponent.statePublisher
     }
 
-    var weakHandle: WeakScopeHostingHandle {
+    var weakHandle: ErasedProvider<AnyScopeHosting?> {
         let weak = Weak(self)
-        return WeakScopeHostingHandle {
+        return ErasedProvider {
             weak.value?.eraseToAnyScopeHosting()
         }
     }

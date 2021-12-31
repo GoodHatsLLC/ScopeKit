@@ -15,7 +15,7 @@ public struct AnyScopeHosting: Hashable {
     private let detachFunc: ([AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never>
     private let detachAllFunc: () -> Future<[AnyScopedBehavior], Never>
     let statePublisher: AnyPublisher<ActivityState, Never>
-    let weakHandle: WeakScopeHostingHandle
+    let weakHandle: ErasedProvider<AnyScopeHosting?>
     let underlying: AnyObject
 
     init<T>(_ concrete: T) where T: ScopeHosting, T: ScopeHostingInternal {
