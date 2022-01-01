@@ -1,17 +1,6 @@
 import Combine
 import Foundation
 
-struct AuthenticationToken: Codable {
-
-    static let fakeToken = AuthenticationToken(
-        grantDate: Date(),
-        grantDuration: 60*5
-    )
-
-    let grantDate: Date
-    let grantDuration: TimeInterval
-}
-
 class FakeNetworkClient {
 
     struct FakeCredentials {
@@ -21,6 +10,7 @@ class FakeNetworkClient {
 
     enum NetworkClientError: Error {
         case authenticationError
+        case tokenRefreshError
     }
 
     func authenticate(username: String, password: String) -> Deferred<Future<AuthenticationToken, NetworkClientError>> {
@@ -31,6 +21,18 @@ class FakeNetworkClient {
                     promise(.success(AuthenticationToken.fakeToken))
                 } else {
                     promise(.failure(.authenticationError))
+                }
+            }
+        }
+    }
+
+    func refresh(token: AuthenticationToken) -> Deferred<Future<AuthenticationToken, NetworkClientError>> {
+        Deferred {
+            Future { promise in
+                if Date().timeIntervalSince(token.grantDate) < (token.grantDuration + AuthenticationToken.gracePeriod) {
+                    promise(.success(AuthenticationToken.fakeToken))
+                } else {
+                    promise(.failure(.tokenRefreshError))
                 }
             }
         }
