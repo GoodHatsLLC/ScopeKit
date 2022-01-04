@@ -135,6 +135,8 @@ extension Behavior: ScopedBehavior {
             hostPublisher
                 // first, keep track of any existing parent.
                 .first()
+                // do nothing if reattaching to same parent.
+                .filter { $0 != host }
                 .map { potentialFormerParent in
                     // then attach self
                     // self could currently has two parents retaining it

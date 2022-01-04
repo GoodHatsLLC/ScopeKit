@@ -163,6 +163,20 @@ final class BehaviorTestRunner {
         XCTAssertFalse(didStop)
     }
 
+    func test_attach_isIdempotent() {
+        let behavior = self.lifecycleCallbackBehaviorBuilder()
+        behavior.attach(to: root)
+        var effect = false
+        behavior.willAttachCallback = { effect = true }
+        behavior.willActivateCallback = { effect = true }
+        behavior.didDeactivateCallback = { effect = true }
+        behavior.didDetachCallback = { effect = true }
+        behavior.cancelCallback = { effect = true }
+
+        behavior.attach(to: root)
+        XCTAssertFalse(effect)
+    }
+
     // MARK: - Cancellable
 
     func test_cancellableCalled_onDetach() {
