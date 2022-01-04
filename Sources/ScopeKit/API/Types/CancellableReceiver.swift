@@ -13,12 +13,18 @@ public class CancellableReceiver {
         self.listener = listener
     }
 
-    public var cancellables: Set<AnyCancellable> {
+    var cancellables: Set<AnyCancellable> {
         get {
             Set<AnyCancellable>()
         }
         set {
             listener?.receiveProxied(cancellables: newValue)
         }
+    }
+}
+
+public extension Cancellable {
+    func store(in receiver: CancellableReceiver) {
+        self.store(in: &receiver.cancellables)
     }
 }

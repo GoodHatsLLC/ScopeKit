@@ -34,7 +34,7 @@ extension Scope: ReceiverListener {
         cancelExternalCancellablesIfNotActive()
     }
 
-    public var storeWhileActive: CancellableReceiver {
+    public var whileActiveReceiver: CancellableReceiver {
         CancellableReceiver(listener: self)
     }
 
