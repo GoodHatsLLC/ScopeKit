@@ -5,12 +5,12 @@ import XCTest
 final class BehaviorTestRunner {
 
     let behaviorBuilder: () -> Behavior
-    let lifecycleCallbackBehaviorBuilder: () -> LifecycleCallbackBehavior
-    let root = RootScope()
+    let lifecycleCallbackBehaviorBuilder: () -> LifecycleCallbackBehaviorType
+    let root = RootScope().eraseToAnyScopeHosting()
 
     init(
         behaviorBuilder: @escaping () -> Behavior,
-        lifecycleCallbackBehaviorBuilder: @escaping () -> LifecycleCallbackBehavior
+        lifecycleCallbackBehaviorBuilder: @escaping () -> LifecycleCallbackBehaviorType
     ) {
         self.behaviorBuilder = behaviorBuilder
         self.lifecycleCallbackBehaviorBuilder = lifecycleCallbackBehaviorBuilder
@@ -153,7 +153,7 @@ final class BehaviorTestRunner {
     }
 
     func test_didStopNotCalled_onReparent() {
-        let root2 = RootScope()
+        let root2 = RootScope().eraseToAnyScopeHosting()
         let behavior = self.lifecycleCallbackBehaviorBuilder()
         var didStop = false
         behavior.didDeactivateCallback = { didStop = true }

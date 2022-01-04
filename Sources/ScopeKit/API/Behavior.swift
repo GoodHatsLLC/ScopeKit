@@ -130,6 +130,7 @@ extension Behavior: ScopedBehavior {
         stateMulticastSubject.value
     }
 
+    @discardableResult
     public func attach(to host: AnyScopeHosting) -> Future<(), AttachmentError> {
         Future<(), AttachmentError> { [self] promise in
             hostPublisher

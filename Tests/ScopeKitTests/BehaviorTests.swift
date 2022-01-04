@@ -1,13 +1,13 @@
 import Combine
 import XCTest
-import ScopeKit
+@testable import ScopeKit
 
 final class BehaviorTests: XCTestCase {
 
     static var runner = {
         BehaviorTestRunner(
             behaviorBuilder: { Behavior() },
-            lifecycleCallbackBehaviorBuilder: { LifecycleCallbackBehavior() }
+            lifecycleCallbackBehaviorBuilder:  { LifecycleCallbackBehavior() }
         )
     }
 
@@ -88,7 +88,17 @@ final class BehaviorTests: XCTestCase {
     }
 }
 
-open class LifecycleCallbackBehavior: Behavior {
+
+protocol LifecycleCallbackBehaviorType: ScopedBehavior, AnyObject {
+    var willAttachCallback: (() -> ())? { get set }
+    var willActivateCallback: (() -> ())? { get set }
+    var didDeactivateCallback: (() -> ())? { get set }
+    var didDetachCallback: (() -> ())? { get set }
+    var cancelCallback: (() -> ())? { get set }
+}
+
+
+open class LifecycleCallbackBehavior: Behavior, LifecycleCallbackBehaviorType {
 
     var willAttachCallback: (() -> ())? = nil
     var willActivateCallback: (() -> ())? = nil

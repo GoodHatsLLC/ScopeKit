@@ -136,17 +136,30 @@ final class ScopeTests: XCTestCase {
 
 }
 
-open class LifecycleCallbackScope: LifecycleCallbackBehavior {
+class LifecycleCallbackScope: Scope, LifecycleCallbackBehaviorType {
 
-    override open func willActivate(cancellables: inout Set<AnyCancellable>) {
+    var willAttachCallback: (() -> ())? = nil
+    var willActivateCallback: (() -> ())? = nil
+    var didDeactivateCallback: (() -> ())? = nil
+    var didDetachCallback: (() -> ())? = nil
+    var cancelCallback: (() -> ())? = nil
+
+    override func willAttach() {
+        willAttachCallback?()
+    }
+
+    override func willActivate(cancellables: inout Set<AnyCancellable>) {
         willActivateCallback?()
-        AnyCancellable { [weak self] in
-            guard let self = self else { return }
+        AnyCancellable {
             self.cancelCallback?()
         }.store(in: &cancellables)
     }
 
-    override open func didDeactivate() {
+    override func didDeactivate() {
         didDeactivateCallback?()
+    }
+
+    override func didDetach() {
+        didDetachCallback?()
     }
 }
