@@ -74,10 +74,8 @@ extension Scope: ScopeHosting {
 
 extension Scope: ScopeHostingInternal {
     var ancestors: [AnyScopeHosting] {
-        guard let parent = hostSubject.value?.value else {
-            return [self.eraseToAnyScopeHosting()]
-        }
-        return [self.eraseToAnyScopeHosting()] + parent.ancestors
+        let ancestorsExcludingSelf = hostSubject.value?.value?.ancestors ?? []
+        return [self.eraseToAnyScopeHosting()] + ancestorsExcludingSelf
     }
 
 
