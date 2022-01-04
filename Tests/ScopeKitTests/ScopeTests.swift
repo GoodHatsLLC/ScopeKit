@@ -36,6 +36,7 @@ final class ScopeTests: XCTestCase {
         Self.runner().test_willStartCalled_onReattach()
         Self.runner().test_didStopNotCalled_onReparent()
         Self.runner().test_attach_isIdempotent()
+        Self.runner().test_detach_isIdempotent()
         Self.runner().test_cancellableCalled_onDetach()
     }
 

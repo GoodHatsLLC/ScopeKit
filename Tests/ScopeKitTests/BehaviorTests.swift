@@ -77,6 +77,10 @@ final class BehaviorTests: XCTestCase {
         Self.runner().test_attach_isIdempotent()
     }
 
+    func test_detach_isIdempotent() {
+        Self.runner().test_detach_isIdempotent()
+    }
+
     // MARK: - Cancellable
 
     func test_cancellableCalled_onDetach() {
