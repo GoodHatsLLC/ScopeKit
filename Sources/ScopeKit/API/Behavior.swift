@@ -10,7 +10,7 @@ open class Behavior {
 
     private var behaviorCancellable: AnyCancellable?
     private let stateMulticastSubject = CurrentValueSubject<ActivityState, Never>(.detached)
-    private let hostSubject = CurrentValueSubject<ErasedProvider<AnyScopeHosting?>?, Never>(nil)
+    let hostSubject = CurrentValueSubject<ErasedProvider<AnyScopeHosting?>?, Never>(nil)
     var internalCancellables = Set<AnyCancellable>()
 
     public init() {
@@ -43,6 +43,45 @@ open class Behavior {
     /// Called when the Behavior/Scope is detached from its superscope.
     /// Behavior to be extended by subclass.`super` call is not required.
     open func didDetach() {}
+
+    @discardableResult
+    public func attach(to host: AnyScopeHosting) -> Future<(), AttachmentError> {
+        Future<(), AttachmentError> { [self] promise in
+            hostPublisher
+            // first, keep track of any existing parent.
+                .first()
+            // do nothing if reattaching to same parent.
+                .filter { $0 != host }
+                .map { potentialFormerParent in
+                    // then attach self
+                    // self could currently has two parents retaining it
+                    host.attachSubscopes([self.eraseToAnyScopedBehavior()])
+                    // but pass any existing parent onwards
+                        .map { potentialFormerParent }
+                }
+                .switchToLatest()
+                .handleEvents(receiveOutput: { _ in
+                    // inform self of new parent
+                    self.hostSubject.send(host.weakHandle)
+                })
+            // remove the case of no-former-parent
+                .compactMap { $0 }
+            // finally detach from the former parent to stop its retention
+                .map { formerParent in
+                    // this call should trigger a `willDetach` call on `self`
+                    // but the host from which we are detaching is not the current—
+                    // so no action is taken
+                    // see (1)
+                    formerParent.detachSubscopes([self.eraseToAnyScopedBehavior()])
+                }
+                .switchToLatest()
+                .map { _ in () }
+                .sink {
+                    promise(.success(()))
+                }
+                .store(in: &internalCancellables)
+        }
+    }
 
 }
 
@@ -128,45 +167,6 @@ extension Behavior: ScopedBehavior {
 
     public var state: ActivityState {
         stateMulticastSubject.value
-    }
-
-    @discardableResult
-    public func attach(to host: AnyScopeHosting) -> Future<(), AttachmentError> {
-        Future<(), AttachmentError> { [self] promise in
-            hostPublisher
-                // first, keep track of any existing parent.
-                .first()
-                // do nothing if reattaching to same parent.
-                .filter { $0 != host }
-                .map { potentialFormerParent in
-                    // then attach self
-                    // self could currently has two parents retaining it
-                    host.attachSubscopes([self.eraseToAnyScopedBehavior()])
-                    // but pass any existing parent onwards
-                        .map { potentialFormerParent }
-                }
-                .switchToLatest()
-                .handleEvents(receiveOutput: { _ in
-                    // inform self of new parent
-                    self.hostSubject.send(host.weakHandle)
-                })
-                // remove the case of no-former-parent
-                .compactMap { $0 }
-                // finally detach from the former parent to stop its retention
-                .map { formerParent in
-                    // this call should trigger a `willDetach` call on `self`
-                    // but the host from which we are detaching is not the current—
-                    // so no action is taken
-                    // see (1)
-                    formerParent.detachSubscopes([self.eraseToAnyScopedBehavior()])
-                }
-                .switchToLatest()
-                .map { _ in () }
-                .sink {
-                    promise(.success(()))
-                }
-                .store(in: &internalCancellables)
-        }
     }
 
     @discardableResult

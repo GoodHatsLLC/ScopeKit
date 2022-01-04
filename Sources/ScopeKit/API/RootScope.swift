@@ -31,6 +31,10 @@ extension RootScope: ScopeHosting {
 }
 
 extension RootScope: ScopeHostingInternal {
+    var ancestors: [AnyScopeHosting] {
+        [self.eraseToAnyScopeHosting()]
+    }
+
 
     var statePublisher: AnyPublisher<ActivityState, Never> {
         hostComponent.statePublisher

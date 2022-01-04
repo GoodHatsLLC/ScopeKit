@@ -11,14 +11,17 @@ final class ScopeTests: XCTestCase {
         )
     }
 
+    var cancellables: Set<AnyCancellable>!
     var root: RootScope!
 
     override func setUp() {
         root = RootScope()
+        cancellables = Set<AnyCancellable>()
     }
 
     override func tearDown() {
         root = nil
+        cancellables.forEach { $0.cancel() }
     }
 
     // MARK: - Behavior tests
@@ -38,6 +41,62 @@ final class ScopeTests: XCTestCase {
         Self.runner().test_attach_isIdempotent()
         Self.runner().test_detach_isIdempotent()
         Self.runner().test_cancellableCalled_onDetach()
+    }
+
+    func test_attachToSelf_fails() {
+        let scope = LifecycleCallbackScope()
+        var effect = false
+        scope.willAttachCallback = { effect = true }
+        scope.willActivateCallback = { effect = true }
+        scope.didDeactivateCallback = { effect = true }
+        scope.didDetachCallback = { effect = true }
+        scope.cancelCallback = { effect = true }
+        var didSink = false
+        scope.attach(to: scope)
+            .sink(
+                receiveCompletion: { completion in
+                    didSink = true
+                    switch completion {
+                    case .failure(let error):
+                        XCTAssertEqual(error, AttachmentError.circularAttachment)
+                    case .finished:
+                        XCTFail()
+                    }
+                },
+                receiveValue: { _ in }
+            )
+            .store(in: &cancellables)
+        XCTAssert(didSink)
+        XCTAssertFalse(effect)
+    }
+
+    func test_indirectCircularAttachment_fails() {
+        let scope1 = LifecycleCallbackScope()
+        let scope2 = LifecycleCallbackScope()
+        scope2.attach(to: scope1)
+        var effect = false
+        scope1.willAttachCallback = { effect = true }
+        scope1.willActivateCallback = { effect = true }
+        scope1.didDeactivateCallback = { effect = true }
+        scope1.didDetachCallback = { effect = true }
+        scope1.cancelCallback = { effect = true }
+        var didSink = false
+        scope1.attach(to: scope2)
+            .sink(
+                receiveCompletion: { completion in
+                    didSink = true
+                    switch completion {
+                    case .failure(let error):
+                        XCTAssertEqual(error, AttachmentError.circularAttachment)
+                    case .finished:
+                        XCTFail()
+                    }
+                },
+                receiveValue: { _ in }
+            )
+            .store(in: &cancellables)
+        XCTAssert(didSink)
+        XCTAssertFalse(effect)
     }
 
     // MARK: - Retain behavior

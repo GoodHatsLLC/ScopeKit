@@ -16,6 +16,15 @@ open class Scope: Behavior {
             cancellable.cancel()
         }
     }
+
+    @discardableResult
+    public override func attach(to host: AnyScopeHosting) -> Future<(), AttachmentError> {
+        guard !host.ancestors.contains(where: { $0 == self.eraseToAnyScopeHosting() }) else {
+            return Future { $0(.failure(AttachmentError.circularAttachment)) }
+        }
+        return super.attach(to: host)
+    }
+
 }
 
 extension Scope: ReceiverListener {
@@ -64,6 +73,13 @@ extension Scope: ScopeHosting {
 }
 
 extension Scope: ScopeHostingInternal {
+    var ancestors: [AnyScopeHosting] {
+        guard let parent = hostSubject.value?.value else {
+            return [self.eraseToAnyScopeHosting()]
+        }
+        return [self.eraseToAnyScopeHosting()] + parent.ancestors
+    }
+
 
     var weakHandle: ErasedProvider<AnyScopeHosting?> {
         let weak = Weak(self)

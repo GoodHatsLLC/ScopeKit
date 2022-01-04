@@ -14,12 +14,14 @@ public struct AnyScopeHosting: Hashable {
     private let attachFunc: ([AnyScopedBehavior]) -> Future<(), Never>
     private let detachFunc: ([AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never>
     private let detachAllFunc: () -> Future<[AnyScopedBehavior], Never>
+    private let ancestorsFunc: () -> [AnyScopeHosting]
     let statePublisher: AnyPublisher<ActivityState, Never>
     let weakHandle: ErasedProvider<AnyScopeHosting?>
     let underlying: AnyObject
 
     init<T>(_ concrete: T) where T: ScopeHosting, T: ScopeHostingInternal {
         self.statePublisher = concrete.statePublisher
+        self.ancestorsFunc = { concrete.ancestors }
         self.attachFunc = { scopes in concrete.attachSubscopes(scopes) }
         self.detachFunc = { scopes in concrete.detachSubscopes(scopes) }
         self.detachAllFunc = { concrete.detachAllSubscopes() }
@@ -46,4 +48,8 @@ extension AnyScopeHosting: ScopeHosting {
     }
 }
 
-extension AnyScopeHosting: ScopeHostingInternal {}
+extension AnyScopeHosting: ScopeHostingInternal {
+    var ancestors: [AnyScopeHosting] {
+        ancestorsFunc()
+    }
+}
