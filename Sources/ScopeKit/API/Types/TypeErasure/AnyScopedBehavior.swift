@@ -48,16 +48,13 @@ extension AnyScopedBehavior: ScopedBehaviorImpl {
 }
 
 extension AnyScopedBehavior: ScopedBehaviorInternal {
+
     func willAttach() {
         sbInternal.willAttach()
     }
 
     func willActivate(cancellables: inout Set<AnyCancellable>) {
         sbInternal.willActivate(cancellables: &cancellables)
-    }
-
-    func didActivate() {
-        sbInternal.didActivate()
     }
 
     func willDeactivate() {

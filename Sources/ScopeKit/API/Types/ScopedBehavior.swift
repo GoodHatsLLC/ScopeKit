@@ -11,6 +11,7 @@ public protocol ScopedBehavior {
 
     /// The (non-deferred) Future executes immediately. Consumers only need to sink if they care about the result.
     @discardableResult func detach() -> Future<(), AttachmentError>
+
 }
 
 public extension ScopedBehavior {
@@ -20,13 +21,17 @@ public extension ScopedBehavior {
     }
 }
 
-protocol ScopedBehaviorInternal: ScopedBehavior {
+protocol BehaviorLifecycleHandling {
     func willAttach()
     func didAttach(to host: AnyScopeHosting)
     func willActivate(cancellables: inout Set<AnyCancellable>)
-    func didActivate()
+    func activate()
     func willDeactivate()
+    func deactivate()
     func didDeactivate()
     func willDetach(from host: AnyScopeHosting)
     func didDetach()
+
 }
+
+protocol ScopedBehaviorInternal: ScopedBehavior, BehaviorLifecycleHandling {}

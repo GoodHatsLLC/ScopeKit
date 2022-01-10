@@ -3,11 +3,11 @@ import Foundation
 
 open class Behavior {
 
-    public init() {
-        initializeBehaviorLifecycle()
-    }
-
     let scopedBehaviorComponent = BehaviorComponent()
+
+    public init() {
+        scopedBehaviorComponent.start(listener: self)
+    }
 
     @discardableResult
     public func attach(to host: AnyScopeHosting) -> Future<(), AttachmentError> {
@@ -22,9 +22,16 @@ open class Behavior {
     /// Behavior to be extended by subclass.`super` call is not required.
     open func willActivate(cancellables: inout Set<AnyCancellable>) {}
 
+    func willDeactivate() {}
+
     /// Called after the Behavior/Scope is stopped—either when it's directly detached or when an ancestor is no longer attached.
     /// Behavior to be extended by subclass.`super` call is not required.
     open func didDeactivate() {}
+
+    @discardableResult
+    public func detach() -> Future<(), AttachmentError> {
+        scopedBehaviorComponent.detach(behavior: self.eraseToAnyScopedBehavior())
+    }
 
     /// Called when the Behavior/Scope is detached from its superscope.
     /// Behavior to be extended by subclass.`super` call is not required.
@@ -38,21 +45,12 @@ extension Behavior: ScopedBehavior {
     }
 
     @discardableResult
-    public func detach() -> Future<(), AttachmentError> {
-        scopedBehaviorComponent.detach(behavior: self.eraseToAnyScopedBehavior())
-    }
-
-    @discardableResult
     public func eraseToAnyScopedBehavior() -> AnyScopedBehavior {
         AnyScopedBehavior(from: self)
     }
 }
 
-extension Behavior: ScopedBehaviorInternal {
-    func didAttach(to host: AnyScopeHosting) {}
-    func didActivate() {}
-    func willDeactivate() {}
-}
+extension Behavior: ScopedBehaviorInternal, BehaviorComponentListener {}
 
 extension Behavior: ScopedBehaviorImpl {
     var statePublisher: AnyPublisher<ActivityState, Never> {

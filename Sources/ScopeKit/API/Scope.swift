@@ -8,8 +8,8 @@ open class Scope {
     private let whileActiveCancellableHolder = CancellableHolderBehavior()
 
     public init() {
+        scopedBehaviorComponent.start(listener: self)
         whileActiveCancellableHolder.attach(to: self)
-        initializeBehaviorLifecycle()
     }
 
     public var whileActiveReceiver: CancellableReceiver {
@@ -32,6 +32,8 @@ open class Scope {
     /// Behavior to be extended by subclass.`super` call is not required.
     open func willActivate(cancellables: inout Set<AnyCancellable>) {}
 
+    func willDeactivate() {}
+
     /// Called after the Behavior/Scope is stopped—either when it's directly detached or when an ancestor is no longer attached.
     /// Behavior to be extended by subclass.`super` call is not required.
     open func didDeactivate() {}
@@ -52,17 +54,12 @@ extension Scope: ScopedBehavior {
         scopedBehaviorComponent.detach(behavior: self.eraseToAnyScopedBehavior())
     }
 
-    @discardableResult
     public func eraseToAnyScopedBehavior() -> AnyScopedBehavior {
         AnyScopedBehavior(from: self)
     }
 }
 
-extension Scope: ScopedBehaviorInternal {
-    func didAttach(to host: AnyScopeHosting) {}
-    func didActivate() {}
-    func willDeactivate() {}
-}
+extension Scope: ScopedBehaviorInternal, BehaviorComponentListener {}
 
 extension Scope: ScopedBehaviorImpl {
     var statePublisher: AnyPublisher<ActivityState, Never> {
