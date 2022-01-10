@@ -12,43 +12,22 @@ public final class RootScope {
 }
 
 extension RootScope: ScopeHosting {
-
-    public func attachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<(), Never> {
-        hostComponent.attachSubscopes(scopes, to: self.eraseToAnyScopeHosting())
-    }
-
-    public func detachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never> {
-        hostComponent.detachSubscopes(scopes, from: self.eraseToAnyScopeHosting())
-    }
-
-    public func detachAllSubscopes() -> Future<[AnyScopedBehavior], Never> {
-        hostComponent.detachAllSubscopes(from: self.eraseToAnyScopeHosting())
-    }
-
     public func eraseToAnyScopeHosting() -> AnyScopeHosting {
         AnyScopeHosting(self)
     }
 }
 
-extension RootScope: ScopeHostingInternal {
-    var ancestors: [AnyScopeHosting] {
-        [self.eraseToAnyScopeHosting()]
-    }
-
-
-    var statePublisher: AnyPublisher<ActivityState, Never> {
-        hostComponent.statePublisher
-    }
-
-    var weakHandle: ErasedProvider<AnyScopeHosting?> {
-        let weak = Weak(self)
-        return ErasedProvider {
-            weak.value?.eraseToAnyScopeHosting()
-        }
-    }
-
+extension RootScope: ScopeHostingImpl {
     var underlying: AnyObject {
         self
     }
 
+
+    var ancestors: [AnyScopeHosting] {
+        []
+    }
+
+    var statePublisher: AnyPublisher<ActivityState, Never> {
+        Just(.active).eraseToAnyPublisher()
+    }
 }

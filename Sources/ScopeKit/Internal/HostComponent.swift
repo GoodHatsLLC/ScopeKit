@@ -11,13 +11,7 @@ final class HostComponent {
 
 extension HostComponent {
 
-    var statePublisher: AnyPublisher<ActivityState, Never> {
-        Just(ActivityState.active).eraseToAnyPublisher()
-    }
-
     func detachAllSubscopes(from owner: AnyScopeHosting) -> Future<[AnyScopedBehavior], Never> {
-        // By not using Deferred we avoid the consumer having to sink
-        // if they're not interested in keeping the detached Scopes.
         Future { [self] promise in
             subscopesSubject
                 .first()
@@ -33,8 +27,6 @@ extension HostComponent {
     }
 
     func detachSubscopes(_ scopes: [AnyScopedBehavior], from owner: AnyScopeHosting) -> Future<[AnyScopedBehavior], Never> {
-        // By not using Deferred we avoid the consumer having to sink
-        // if they're not interested in keeping the detached Scopes.
         Future { [self] promise in
             subscopesSubject
                 .first()

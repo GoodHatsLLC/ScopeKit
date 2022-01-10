@@ -4,12 +4,14 @@ import XCTest
 
 final class BehaviorTestRunner {
 
-    let behaviorBuilder: () -> Behavior
+    typealias ScopeType = ScopedBehavior & AnyObject
+
+    let behaviorBuilder: () -> ScopeType
     let lifecycleCallbackBehaviorBuilder: () -> LifecycleCallbackBehaviorType
     let root = RootScope().eraseToAnyScopeHosting()
 
     init(
-        behaviorBuilder: @escaping () -> Behavior,
+        behaviorBuilder: @escaping () -> ScopeType,
         lifecycleCallbackBehaviorBuilder: @escaping () -> LifecycleCallbackBehaviorType
     ) {
         self.behaviorBuilder = behaviorBuilder
@@ -53,7 +55,7 @@ final class BehaviorTestRunner {
     // MARK: - Retain behavior
 
     func test_noRetain_onInit() {
-        weak var weakBehavior: Behavior? = nil
+        weak var weakBehavior: ScopeType? = nil
         autoreleasepool {
             let strongScope = self.behaviorBuilder()
             weakBehavior = strongScope
@@ -63,7 +65,7 @@ final class BehaviorTestRunner {
     }
 
     func test_noRelease_whenAttached() {
-        weak var weakBehavior: Behavior? = nil
+        weak var weakBehavior: ScopeType? = nil
         autoreleasepool {
             {
                 let behavior = self.behaviorBuilder()
@@ -75,7 +77,7 @@ final class BehaviorTestRunner {
     }
 
     func test_noRetain_onceDetached() {
-        weak var weakBehavior: Behavior? = nil
+        weak var weakBehavior: ScopeType? = nil
         autoreleasepool {
             {
                 let behavior = self.behaviorBuilder()
@@ -90,7 +92,7 @@ final class BehaviorTestRunner {
 
     func test_noRetain_WhenRootIsUnreferenced() {
         weak var weakHost: RootScope? = nil
-        weak var weakBehavior: Behavior? = nil
+        weak var weakBehavior: ScopeType? = nil
         autoreleasepool {
             let host = RootScope()
             weakHost = host
@@ -106,7 +108,7 @@ final class BehaviorTestRunner {
 
     func test_noRetain_byFormerParentOnReparent() {
         let root2 = RootScope()
-        weak var weakBehavior: Behavior? = nil
+        weak var weakBehavior: ScopeType? = nil
         autoreleasepool {
             let behavior = self.behaviorBuilder()
             weakBehavior = behavior

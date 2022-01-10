@@ -12,49 +12,76 @@ public struct AnyScopedBehavior: Hashable {
     }
 
 
-    private let didAttachFunc: (AnyScopeHosting) -> ()
-    private let willDetachFunc: (AnyScopeHosting) -> ()
-    private let attachFunc: (AnyScopeHosting) -> (Future<(), AttachmentError>)
-    private let detachFunc: () -> (Future<(), AttachmentError>)
-    private let stateFunc: () -> ActivityState
-    let underlying: AnyObject
+    private let underlyingObject: AnyObject
+    private let scopedBehaviorComponentFunc: () -> BehaviorComponent
+    private let statePublisherFunc: () -> AnyPublisher<ActivityState, Never>
+    private let internalFunc: () -> ScopedBehaviorInternal
 
-    init<T>(from concrete: T) where T: ScopedBehavior, T: ScopedBehaviorInternal {
-        underlying = concrete.underlying
-        didAttachFunc = { host in concrete.didAttach(to: host) }
-        willDetachFunc = { host in concrete.willDetach(from: host) }
-        attachFunc = { host in concrete.attach(to: host) }
-        detachFunc = { concrete.detach() }
-        stateFunc = { concrete.state }
+    init<T>(from concrete: T) where T: ScopedBehaviorImpl, T: ScopedBehaviorInternal {
+        underlyingObject = concrete.underlying
+        scopedBehaviorComponentFunc = { concrete.scopedBehaviorComponent }
+        statePublisherFunc = { concrete.statePublisher }
+        internalFunc = { concrete as ScopedBehaviorInternal }
     }
+
+    private var sbInternal: ScopedBehaviorInternal { internalFunc() }
 }
 
-extension AnyScopedBehavior: ScopedBehavior {
-    public var state: ActivityState {
-        stateFunc()
+extension AnyScopedBehavior: ScopedBehaviorImpl {
+
+    var underlying: AnyObject {
+        underlyingObject
     }
 
-    @discardableResult
-    public func attach(to host: AnyScopeHosting) -> Future<(), AttachmentError> {
-        attachFunc(host)
+    func eraseToAnyScopedBehavior() -> AnyScopedBehavior {
+        return self
     }
 
-    @discardableResult
-    public func detach() -> Future<(), AttachmentError> {
-        detachFunc()
+    var statePublisher: AnyPublisher<ActivityState, Never> {
+        statePublisherFunc()
     }
 
-    public func eraseToAnyScopedBehavior() -> AnyScopedBehavior {
-        self
+    var scopedBehaviorComponent: BehaviorComponent {
+        scopedBehaviorComponentFunc()
     }
+
 }
 
 extension AnyScopedBehavior: ScopedBehaviorInternal {
-    func didAttach(to host: AnyScopeHosting) {
-        didAttachFunc(host)
+    func willAttach() {
+        sbInternal.willAttach()
     }
 
-    func willDetach(from host: AnyScopeHosting) {
-        willDetachFunc(host)
+    func willActivate(cancellables: inout Set<AnyCancellable>) {
+        sbInternal.willActivate(cancellables: &cancellables)
     }
+
+    func didActivate() {
+        sbInternal.didActivate()
+    }
+
+    func willDeactivate() {
+        sbInternal.willDeactivate()
+    }
+
+    func didDeactivate() {
+        sbInternal.didDeactivate()
+    }
+
+    func didDetach() {
+        sbInternal.didDetach()
+    }
+
+    public func attach(to host: AnyScopeHosting) -> Future<(), AttachmentError> {
+        sbInternal.attach(to: host)
+    }
+
+    public func detach() -> Future<(), AttachmentError> {
+        sbInternal.detach()
+    }
+
+    public var state: ActivityState {
+        sbInternal.state
+    }
+
 }

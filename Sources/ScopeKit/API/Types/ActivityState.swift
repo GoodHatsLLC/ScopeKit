@@ -40,3 +40,8 @@ public enum ActivityState {
     /// Has started and is actively performing its behavior.
     case active
 }
+
+struct StateTransition: Equatable {
+    let previous: ActivityState?
+    let current: ActivityState?
+}
