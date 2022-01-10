@@ -24,7 +24,7 @@ extension RootScope: ScopeHostingImpl {
 
 
     var ancestors: [AnyScopeHosting] {
-        []
+        [self.eraseToAnyScopeHosting()]
     }
 
     var statePublisher: AnyPublisher<ActivityState, Never> {

@@ -3,6 +3,10 @@ import Foundation
 
 open class Behavior {
 
+    public init() {
+        initializeBehaviorLifecycle()
+    }
+
     let scopedBehaviorComponent = BehaviorComponent()
 
     @discardableResult

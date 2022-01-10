@@ -27,7 +27,7 @@ extension ScopedBehaviorImpl where Self: ScopedBehaviorInternal, Self: AnyObject
 
 extension ScopedBehaviorImpl where Self: ScopedBehaviorInternal {
 
-    func start() {
+    func activate() {
         var cancellables = Set<AnyCancellable>()
 
         willActivate(cancellables: &cancellables)
@@ -37,7 +37,7 @@ extension ScopedBehaviorImpl where Self: ScopedBehaviorInternal {
         didActivate()
     }
 
-    func stop() {
+    func deactivate() {
         willDeactivate()
 
         scopedBehaviorComponent.behaviorCancellableHolder.reset()
@@ -62,7 +62,7 @@ extension ScopedBehaviorImpl where Self: ScopedBehaviorInternal {
         scopedBehaviorComponent.hostSubject.send(host.weakHandle)
     }
 
-    func manageBehaviorLifecycle() {
+    func initializeBehaviorLifecycle() {
 
         scopedBehaviorComponent.statePublisher
             .removeDuplicates()
@@ -80,13 +80,13 @@ extension ScopedBehaviorImpl where Self: ScopedBehaviorInternal {
                     anySelf.willAttach()
                 case (.detached, .active):
                     anySelf.willAttach()
-                    anySelf.start()
+                    anySelf.activate()
                 case (.attached, .active):
-                    anySelf.start()
+                    anySelf.activate()
                 case (.active, .attached):
-                    anySelf.stop()
+                    anySelf.deactivate()
                 case (.active, .detached):
-                    anySelf.stop()
+                    anySelf.deactivate()
                     anySelf.didDetach()
                 case (.attached, .detached):
                     anySelf.didDetach()

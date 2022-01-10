@@ -9,6 +9,7 @@ open class Scope {
 
     public init() {
         whileActiveCancellableHolder.attach(to: self)
+        initializeBehaviorLifecycle()
     }
 
     public var whileActiveReceiver: CancellableReceiver {
