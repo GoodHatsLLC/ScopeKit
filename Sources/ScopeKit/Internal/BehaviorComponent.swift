@@ -31,8 +31,11 @@ extension BehaviorComponent {
             }
             .eraseToAnyPublisher()
     }
+    
 
     var statePublisher: AnyPublisher<ActivityState, Never> {
+        let hostPublisher = hostPublisher.share()
+
         let isDirectlyDetached = hostPublisher
             .map { $0 == nil }
 
