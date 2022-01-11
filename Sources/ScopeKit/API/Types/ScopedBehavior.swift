@@ -26,6 +26,7 @@ protocol BehaviorLifecycleHandling {
     func didAttach(to host: AnyScopeHosting)
     func willActivate(cancellables: inout Set<AnyCancellable>)
     func activate()
+    func didActivate()
     func willDeactivate()
     func deactivate()
     func didDeactivate()

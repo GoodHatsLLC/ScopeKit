@@ -24,11 +24,21 @@ final class BehaviorTestRunner {
         let testBehavior = lifecycleCallbackBehaviorBuilder()
         var hitCounter = 0
         let incremented = { () -> Int in hitCounter += 1; return hitCounter }
-        testBehavior.willAttachCallback = { XCTAssertEqual(incremented(), 1) }
-        testBehavior.willActivateCallback = { XCTAssertEqual(incremented(), 2) }
-        testBehavior.cancelCallback = { XCTAssertEqual(incremented(), 3) }
-        testBehavior.didDeactivateCallback = { XCTAssertEqual(incremented(), 4) }
-        testBehavior.didDetachCallback = { XCTAssertEqual(incremented(), 5) }
+        testBehavior.willAttachCallback = {
+            XCTAssertEqual(incremented(), 1)
+        }
+        testBehavior.willActivateCallback = {
+            XCTAssertEqual(incremented(), 2)
+        }
+        testBehavior.cancelCallback = {
+            XCTAssertEqual(incremented(), 3)
+        }
+        testBehavior.didDeactivateCallback = {
+            XCTAssertEqual(incremented(), 4)
+        }
+        testBehavior.didDetachCallback = {
+            XCTAssertEqual(incremented(), 5)
+        }
 
         testBehavior.attach(to: root)
 
@@ -197,7 +207,9 @@ final class BehaviorTestRunner {
     func test_cancellableCalled_onDetach() {
         var cancelCalled = false
         let behavior = self.lifecycleCallbackBehaviorBuilder()
-        behavior.cancelCallback = { cancelCalled = true }
+        behavior.cancelCallback = {
+            cancelCalled = true
+        }
         behavior.attach(to: root)
         XCTAssertFalse(cancelCalled)
         behavior.detach()

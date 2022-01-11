@@ -57,6 +57,10 @@ extension AnyScopedBehavior: ScopedBehaviorInternal {
         sbInternal.willActivate(cancellables: &cancellables)
     }
 
+    func didActivate() {
+        sbInternal.didActivate()
+    }
+
     func willDeactivate() {
         sbInternal.willDeactivate()
     }

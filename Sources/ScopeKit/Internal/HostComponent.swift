@@ -45,7 +45,7 @@ extension HostComponent {
     func attachSubscopes(_ scopes: [AnyScopedBehavior], to owner: AnyScopeHosting) -> Future<(), Never> {
         // By not using Deferred we avoid the consumer having to sink
         // if they're not interested in keeping the detached Scopes.
-        Future { [self] promise in
+        Future { [self] promise in // weak?
             subscopesSubject
                 .first()
                 .sink { existingSubscopes in

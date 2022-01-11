@@ -33,9 +33,12 @@ extension ScopedBehaviorImpl where Self: ScopedBehaviorInternal {
 
         scopedBehaviorComponent.behaviorCancellableHolder.receive(cancellables)
 
+        didActivate()
     }
 
     func deactivate() {
+
+        willDeactivate()
 
         scopedBehaviorComponent.behaviorCancellableHolder.reset()
 

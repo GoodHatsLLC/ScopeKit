@@ -22,6 +22,8 @@ open class Behavior {
     /// Behavior to be extended by subclass.`super` call is not required.
     open func willActivate(cancellables: inout Set<AnyCancellable>) {}
 
+    func didActivate() {}
+
     func willDeactivate() {}
 
     /// Called after the Behavior/Scope is stopped—either when it's directly detached or when an ancestor is no longer attached.
