@@ -4,41 +4,26 @@ import ScopeKit
 
 final class TokenPersistenceBehavior: Behavior {
 
-    private let tokenSubject: AnySubject<AuthenticationToken?, Never>
+    var cachedToken: AuthenticationToken? {
+        AuthenticationToken.fetchFromDiskCache()
+    }
 
-    init(tokenSubject: AnySubject<AuthenticationToken?, Never>) {
-        self.tokenSubject = tokenSubject
+    private let inputPublisher: AnyPublisher<AuthenticationToken?, Never>
+
+    init(tokenPublisher: AnyPublisher<AuthenticationToken?, Never>) {
+        self.inputPublisher = tokenPublisher
     }
 
     override func willActivate(cancellables: inout Set<AnyCancellable>) {
-        let optionalCachedToken = AuthenticationToken.fetchFromDiskCache()
-        let optionalCachedTokenPublisher = Just(optionalCachedToken)
-
-        // fetch initial token from cache
-        optionalCachedTokenPublisher
-            .compactMap { $0 }
-            .sink { [self] token in
-                tokenSubject.send(token)
-            }
-            .store(in: &cancellables)
-
-        // write new tokens to cache
-        tokenSubject
-            .filter { newOptionalToken in
-                // allow all if no initial cached token
-                guard let cachedToken = optionalCachedToken else {
-                    return true
-                }
-
-                // filter out the initial token
-                return newOptionalToken != cachedToken
-            }
-            .removeDuplicates()
+        inputPublisher
             .sink { optionalToken in
                 if let token = optionalToken {
                     do {
                         try token.writeToDiskCache()
-                    } catch {}
+                        debugPrint("persisted token")
+                    } catch {
+                        debugPrint("error persisting token")
+                    }
                 } else {
                     AuthenticationToken.eraseDiskCache()
                 }

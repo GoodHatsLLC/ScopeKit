@@ -8,7 +8,7 @@ protocol LoggedOutViewControllerListener: AnyObject {
 final class LoggedOutView: UIView {
 
     lazy var loginButton: UIButton = {
-        let button = UIButton(type: .roundedRect)
+        let button = UIButton(configuration: .borderedTinted(), primaryAction: nil)
         button.setTitle("Log In", for: .normal)
         return button
     }()
@@ -54,7 +54,6 @@ final class LoggedOutViewController: UIViewController {
             },
             for: .touchUpInside
         )
-
     }
 
 }

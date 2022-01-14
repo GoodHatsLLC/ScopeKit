@@ -8,7 +8,7 @@ protocol LoggedInViewControllerListener: AnyObject {
 final class LoggedInView: UIView {
 
     lazy var logoutButton: UIButton = {
-        let button = UIButton(type: .roundedRect)
+        let button = UIButton(configuration: .borderedTinted(), primaryAction: nil)
         button.setTitle("Log out", for: .normal)
         return button
     }()
@@ -55,6 +55,15 @@ final class LoggedInViewController: UIViewController {
             },
             for: .touchUpInside
         )
+    }
+
+    var color: UIColor? {
+        get {
+            view.backgroundColor
+        }
+        set {
+            view.backgroundColor = newValue
+        }
     }
 
 }

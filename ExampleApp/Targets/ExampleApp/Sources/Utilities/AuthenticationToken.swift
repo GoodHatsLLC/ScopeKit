@@ -4,12 +4,10 @@ struct AuthenticationToken: Codable, Equatable {
 
     static let fakeToken = AuthenticationToken(
         grantDate: Date(),
-        grantDuration: 60*5
+        grantDuration: 10
     )
 
-    static let gracePeriod = 60.0
-
-    private static let diskCacheKey = "authentication-token"
+    private static let diskCacheKey = "fake-authentication-token"
 
     static func fetchFromDiskCache() -> AuthenticationToken? {
         guard let data = UserDefaults.standard.data(forKey: diskCacheKey) else {
@@ -28,6 +26,11 @@ struct AuthenticationToken: Codable, Equatable {
 
     static func eraseDiskCache() {
         UserDefaults.standard.set(nil, forKey: Self.diskCacheKey)
+    }
+
+    var isValid: Bool {
+        let interval = Date().timeIntervalSince(grantDate)
+        return interval < grantDuration
     }
 
     let grantDate: Date

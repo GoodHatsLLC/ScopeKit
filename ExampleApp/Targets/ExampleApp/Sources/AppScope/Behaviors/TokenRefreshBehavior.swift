@@ -4,30 +4,47 @@ import ScopeKit
 
 final class TokenRefreshBehavior: Behavior {
 
-    private let tokenSubject: AnySubject<AuthenticationToken?, Never>
     private let client = FakeNetworkClient()
+    private let currentTokenSubject = CurrentValueSubject<AuthenticationToken?, Never>(nil)
 
-    init(tokenSubject: AnySubject<AuthenticationToken?, Never>) {
-        self.tokenSubject = tokenSubject
+    var currentTokenPublisher: AnyPublisher<AuthenticationToken?, Never> {
+        currentTokenSubject.eraseToAnyPublisher()
+    }
+
+    func resetToken(_ newToken: AuthenticationToken?) {
+        currentTokenSubject.send(newToken)
     }
 
     override func willActivate(cancellables: inout Set<AnyCancellable>) {
-        tokenSubject
+        currentTokenSubject
             .compactMap { $0 }
-            .flatMap { token in
+            .map { token in
                 Just(())
                     .delay(for: .seconds(token.grantDuration), scheduler: RunLoop.main)
                     .map { token }
+                    .first()
             }
-            .flatMap { [self] token in
+            .switchToLatest()
+            .map { [self] token in
                 client.refresh(token: token)
-                    // map away the error and fail silently.
+                    .handleEvents(
+                        receiveCompletion: { completion in
+                            switch completion {
+                            case .failure(let error):
+                                debugPrint("could not refresh token: \(error)")
+                            case .finished:
+                                debugPrint("token refreshed")
+                            }
+                        }
+                    )
+                    // map away the error and fail silently with nil.
                     .map { Optional($0) }
                     .replaceError(with: nil)
                     .compactMap { $0 }
             }
+            .switchToLatest()
             .sink { [self] token in
-                tokenSubject.send(token)
+                currentTokenSubject.send(token)
             }
             .store(in: &cancellables)
     }

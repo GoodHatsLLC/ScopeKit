@@ -6,28 +6,40 @@ import UIKit
 final class AppScope: Scope {
 
     private let window: UIWindow
-    private let authTokenSubject = CurrentValueSubject<AuthenticationToken?, Never>(nil)
-
+    private let tokenRefresher: TokenRefreshBehavior
+    private let tokenPersister: TokenPersistenceBehavior
     private var loginStateScope: Scope? = nil
 
     init(window: UIWindow) {
         self.window = window
+        tokenRefresher = TokenRefreshBehavior()
+        tokenPersister = TokenPersistenceBehavior(
+            tokenPublisher: tokenRefresher.currentTokenPublisher
+        )
+        // Only use cache if we find a non-nil value
+        if let cachedToken = tokenPersister.cachedToken,
+           cachedToken.isValid {
+            tokenRefresher.resetToken(cachedToken)
+        }
         super.init()
-        let tokenSubject = authTokenSubject.eraseToAnySubject()
-        TokenRefreshBehavior(tokenSubject: tokenSubject)
-            .attach(to: self)
-        TokenPersistenceBehavior(tokenSubject: tokenSubject)
-            .attach(to: self)
+        tokenRefresher.attach(to: self)
+        tokenPersister.attach(to: self)
     }
 
     override func willActivate(cancellables: inout Set<AnyCancellable>) {
-        let loggedInTokenPublisher = tokenPublisher
+
+        let loggedInTokenPublisher = tokenRefresher.currentTokenPublisher
             .compactMap { $0 }
             .eraseToAnyPublisher()
 
-        let loginStatePublisher = tokenPublisher
-            .map {
-                $0 != nil ? LoginState.loggedIn : LoginState.loggedOut
+        let loginStatePublisher = tokenRefresher.currentTokenPublisher
+            .map { token -> LoginState in
+                if let token = token,
+                   token.isValid {
+                    return LoginState.loggedIn
+                } else {
+                    return LoginState.loggedOut
+                }
             }
 
         loginStatePublisher
@@ -62,10 +74,6 @@ private enum LoginState {
 
 private extension AppScope {
 
-    var tokenPublisher: AnyPublisher<AuthenticationToken?, Never> {
-        authTokenSubject.eraseToAnyPublisher()
-    }
-
     func removeCurrentLogInStateScopeIfNeeded() {
         if let current = loginStateScope {
             current.detach()
@@ -82,12 +90,12 @@ private extension AppScope {
 
 extension AppScope: LoggedOutScopeListener {
     func login(token: AuthenticationToken) {
-        authTokenSubject.send(token)
+        tokenRefresher.resetToken(token)
     }
 }
 
 extension AppScope: LoggedInScopeListener {
     func requestLogout() {
-        authTokenSubject.send(nil)
+        tokenRefresher.resetToken(nil)
     }
 }

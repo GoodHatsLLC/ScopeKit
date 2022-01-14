@@ -30,7 +30,6 @@ extension LoggedOutScope: LoggedOutViewControllerListener {
     func login(username: String, password: String) {
         networkClient
             .authenticate(username: username, password: password)
-        
             .sink(
                 receiveCompletion: { _ in },
                 receiveValue: { [self] token in
