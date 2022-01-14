@@ -17,8 +17,8 @@ jobs:
       - uses: tuist/tuist-action@0.13.0
         with:
           command: 'dependencies'
-          arguments: 'fetch ExampleApp'
+          arguments: 'fetch -p ExampleApp'
       - uses: tuist/tuist-action@0.13.0
         with:
           command: 'build'
-          arguments: 'ExampleApp'
+          arguments: '-p ExampleApp'
