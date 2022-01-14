@@ -8,12 +8,25 @@ on:
 
 jobs:
   build:
-
+    name: Package Tests
     runs-on: macos-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: Build
       run: swift build -v
-    - name: Run tests
+    - name: Test
       run: swift test -v
+  build:
+    name: Example App Build
+    runs-on: macos-latest
+    steps:
+      - run: cd ExampleApp
+      - uses: actions/checkout@v1
+      - uses: tuist/tuist-action@0.13.0
+        with:
+          command: 'dependencies'
+          arguments: 'fetch'
+      - uses: tuist/tuist-action@0.13.0
+        with:
+          command: 'build'
+          arguments: ''
