@@ -39,3 +39,24 @@ extension LoggedOutScope: LoggedOutViewControllerListener {
             .store(in: whileActiveReceiver)
     }
 }
+
+
+final class MyBehavior: Behavior {
+
+    override func willAttach() {}
+
+    override func willActivate(cancellables: inout Set<AnyCancellable>) {
+        /*
+         myPublisher
+            .sink {
+                // Work that is scoped to the behavior's active state
+            }
+            .store(in: &cancellables)
+         */
+    }
+
+    override func didDeactivate() {}
+
+    override func didDetach() {}
+
+}
