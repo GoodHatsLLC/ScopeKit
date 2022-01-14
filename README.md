@@ -2,17 +2,9 @@
 ScopeKit is a Swift library for managing the lifecycle of Combine subscriptions.
 
 ## Purpose
-Ensuring that code *can* only run at the right time is critical to stability and security but managing application state is hard. Apple's Combine is a great way write clear, testable, logic but managing the subscription lifecycle is fiddly.
-
-Combine code is often written assuming that object lifecycles can control subscription lifecycles. But this involves error-prone weakification (i.e. the need to use incantations like `.sink { [weak self] in guard let self = self else { return }`) and leaves a lot of other management to be done manually ('how do i restart this?').
+Ensuring that code *can* only run at the right time is critical to stability and security but managing application state is hard. Apple's Combine is a great way write clear, testable, logic but managing the lifecycles of sinks/subscriptions is error prone at worst and fiddly at best.
 
 ScopeKit allows you to build out a tree of 'scopes' as a scaffold within your app. Subscriptions are bound to their owning Scope and their lifecycles managed automatically (with no need for `[weak self]` incantations), and according to simpele and predictable rules.
-
-
-## Usage
-1. Add `ScopeKit` to your SPM dependencies. `https://github.com/GoodHatsLLC/ScopeKit.git`
-2. `import ScopeKit`
-3. Build out a tree of `Scopes` and `Behaviors` under your `RootScope` :)
 
 ## Concepts
 
@@ -135,6 +127,11 @@ somePublisher
     .store(in: myScope.whileActiveReceiver)
 
 ```
+
+## Usage
+1. Add `ScopeKit` to your SPM dependencies. `https://github.com/GoodHatsLLC/ScopeKit.git`
+2. `import ScopeKit`
+3. Build out a tree of `Scopes` and `Behaviors` under your `RootScope` :)
 
 ## Example App
 
