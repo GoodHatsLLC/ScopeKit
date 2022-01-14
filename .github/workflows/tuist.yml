@@ -13,7 +13,12 @@ jobs:
     name: Build
     runs-on: macos-latest
     steps:
+      - run: cd ExampleApp
       - uses: actions/checkout@v1
+      - uses: tuist/tuist-action@0.13.0
+        with:
+          command: 'dependencies'
+          arguments: 'fetch'
       - uses: tuist/tuist-action@0.13.0
         with:
           command: 'build'
