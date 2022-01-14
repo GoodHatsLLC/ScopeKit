@@ -25,12 +25,15 @@ final class AppScope: Scope {
             tokenPublisher: tokenSubject.eraseToAnyPublisher()
         )
 
-        // Only use cache if we find a non-nil value
+        // Only use the cache if we find a non-nil value
         if let cachedToken = tokenPersister.cachedToken,
            cachedToken.isValid {
             tokenSubject.send(tokenPersister.cachedToken)
         }
         super.init()
+
+        // by attaching once in init we avoid having to
+        // balance a removal or avoid a duplicate attach.
         tokenPersister.attach(to: self)
         tokenValidator.attach(to: self)
     }
@@ -49,6 +52,9 @@ final class AppScope: Scope {
             .sink { [self] state in
                 switch state {
                 case .loggedOut:
+                    // we attach logged-in and logged out dynamically.
+                    // we track the previously attached scope and remove it.
+                    // `loginStateScope`
                     attachLoginStateScope(
                         LoggedOutScope(
                             listener: self,
@@ -79,6 +85,9 @@ private extension AppScope {
         }
     }
 
+    // It would be nice to have helpers for common
+    // attachment types/combinations.
+    // i.e. MutuallyExclusive, enum identified, queue.
     func attachLoginStateScope(_ scope: Scope) {
         removeCurrentLogInStateScopeIfNeeded()
         scope.attach(to: self)
@@ -86,6 +95,10 @@ private extension AppScope {
     }
 }
 
+// A listener patterns works fine for inter-scope
+// communication. Nothing precludes something fancier, though.
+// We could standardise a system but it's not clear there's
+// much to gain from it.
 extension AppScope: LoggedOutScopeListener {
     func login(token: AuthenticationToken) {
         tokenSubject.send(token)
