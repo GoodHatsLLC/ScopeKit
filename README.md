@@ -2,9 +2,9 @@
 ScopeKit is a Swift library for managing the lifecycle of Combine subscriptions.
 
 ## Purpose
-Ensuring that code *can* only run at the right time is critical to stability and security but managing application state is hard. Apple's Combine is a great way write clear, testable, logic but managing the lifecycles of sinks/subscriptions is error prone at worst and fiddly at best.
+Managing application state is hard. Combine is a great way to do it, but it has a steep learning curve and even then leaves error-prone and rote management to be done manually.
 
-ScopeKit allows you to build out a tree of 'scopes' as a scaffold within your app. Subscriptions are bound to their owning Scope and their lifecycles managed automatically (with no need for `[weak self]` incantations), and according to simpele and predictable rules.
+ScopeKit allows you to build out a tree of 'scopes' as a scaffold within your app. Scopes own subscriptions, managing their lifecycles automatically and according to simple and predictable rules. `[weak self]` becomes a thing of the past.
 
 ## Concepts
 
