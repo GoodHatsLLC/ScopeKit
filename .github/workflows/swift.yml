@@ -1,4 +1,4 @@
-name: ScopeKit
+name: Library
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build & Test
+    name: swift build test
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
