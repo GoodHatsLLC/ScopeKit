@@ -45,15 +45,15 @@ extension ScopedBehaviorImpl where Self: ScopedBehaviorInternal {
         didDeactivate()
     }
 
-    func willDetach(from host: AnyScopeHosting) {
+    func willDetach(from detachingHost: AnyScopeHosting) {
         scopedBehaviorComponent.hostPublisher
             .first()
-            .compactMap { $0 }
-            // (1) filter to remove any non-current parent callback.
-            .filter { $0.underlying === host.underlying }
-            .map { _ in () }
-            .sink {
-                self.scopedBehaviorComponent.hostSubject.send(nil)
+            .sink { [self] currentHost in
+                // When the behavior is directly reparented without being
+                // detached first the current host is already reset.
+                if currentHost == detachingHost {
+                    scopedBehaviorComponent.hostSubject.send(nil)
+                }
             }
             .store(in: scopedBehaviorComponent.lifecycleCancellableHolder)
     }

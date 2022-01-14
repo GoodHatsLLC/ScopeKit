@@ -2,14 +2,27 @@ import Combine
 import Foundation
 
 public protocol ScopeHosting {
-
-    /// The (non-deferred) Future executes immediately. Consumers only need to sink if they care about the result.
-    @discardableResult func attachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<(), Never>
-
-    /// The (non-deferred) Future executes immediately. Consumers only need to sink if they care about the result.
-    @discardableResult func detachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never>
-
-    /// The (non-deferred) Future executes immediately. Consumers only need to sink if they care about the result.
-    @discardableResult func detachAllSubscopes() -> Future<[AnyScopedBehavior], Never>
+    /// Erase the specific type of the `ScopeHosting` `self`.
     func eraseToAnyScopeHosting() -> AnyScopeHosting
+}
+
+public extension ScopeHosting {
+    func host<S: ScopedBehavior>(_ member: S) {
+        member.attach(to: self.eraseToAnyScopeHosting())
+    }
+
+    func evict<S: ScopedBehavior>(_ member: S) {
+        member.detach()
+    }
+    func host<S: ScopedBehavior>(_ members: [S]) {
+        for member in members {
+            host(member)
+        }
+    }
+
+    func evict<S: ScopedBehavior>(_ members: [S]) {
+        for member in members {
+            evict(member)
+        }
+    }
 }

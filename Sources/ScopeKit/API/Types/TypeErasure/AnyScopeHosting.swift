@@ -34,15 +34,15 @@ extension AnyScopeHosting: ScopeHosting {
 
 extension AnyScopeHosting: ScopeHostingImpl {
 
-    public func attachSubscopes(_ subscopes: [AnyScopedBehavior]) -> Future<(), Never> {
+    public func host(_ subscopes: [AnyScopedBehavior]) -> Future<(), Never> {
         hostComponent.attachSubscopes(subscopes, to: self)
     }
 
-    public func detachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never> {
+    public func evict(_ scopes: [AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never> {
         hostComponent.detachSubscopes(scopes, from: self)
     }
 
-    public func detachAllSubscopes() -> Future<[AnyScopedBehavior], Never> {
+    public func evictAll() -> Future<[AnyScopedBehavior], Never> {
         hostComponent.detachAllSubscopes(from: self)
     }
 

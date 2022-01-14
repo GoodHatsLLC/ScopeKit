@@ -26,7 +26,7 @@ struct AuthenticationToken: Codable, Equatable {
         }
     }
 
-    func eraseDiskCache() {
+    static func eraseDiskCache() {
         UserDefaults.standard.set(nil, forKey: Self.diskCacheKey)
     }
 

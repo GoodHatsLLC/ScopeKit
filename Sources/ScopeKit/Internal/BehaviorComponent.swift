@@ -129,9 +129,10 @@ extension BehaviorComponent {
                 .map { potentialFormerParent in
                     // then attach self
                     // self could currently has two parents retaining it
-                    host.attachSubscopes([behavior])
+                    host.host([behavior])
                     // but pass any existing parent onwards
                         .map { potentialFormerParent }
+                        .setFailureType(to: AttachmentError.self)
                 }
                 .switchToLatest()
                 .handleEvents(receiveOutput: { _ in
@@ -144,9 +145,13 @@ extension BehaviorComponent {
                     // but the host from which we are detaching is no longer the
                     // parent so no action is taken.
                     potentialFormerParent?
-                        .detachSubscopes([behavior])
-                        .map { _ in () }.eraseToAnyPublisher()
-                    ?? Just(()).eraseToAnyPublisher()
+                        .evict([behavior])
+                        .map { _ in () }
+                        .setFailureType(to: AttachmentError.self)
+                        .eraseToAnyPublisher()
+                    ?? Just(())
+                        .setFailureType(to: AttachmentError.self)
+                        .eraseToAnyPublisher()
                 }
                 .switchToLatest()
                 .first()
@@ -172,7 +177,7 @@ extension BehaviorComponent {
                 .setFailureType(to: AttachmentError.self)
                 .map { optionalHost in
                     optionalHost.map { host in
-                        host.detachSubscopes([behavior])
+                        host.evict([behavior])
                             .map { _ in () }
                             .setFailureType(to: AttachmentError.self)
                             .eraseToAnyPublisher()

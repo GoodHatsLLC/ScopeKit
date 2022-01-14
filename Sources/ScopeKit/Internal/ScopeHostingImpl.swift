@@ -10,6 +10,22 @@ protocol ScopeHostingImpl {
     var ancestors: [AnyScopeHosting] { get }
     var statePublisher: AnyPublisher<ActivityState, Never> { get }
 
+    /// Host the passed `scopes` within `self`, binding their activity lifecycle to that of `self`.
+    /// The (non-deferred) Future executes immediately. Consumers only need to sink if they care about the result.
+    ///
+    /// If `self` is active, the newly hosted scopes will activate.
+    ///
+    /// If the passed scopes are already hosted `self` will become the new singular host.
+    @discardableResult func host(_ scopes: [AnyScopedBehavior]) -> Future<(), Never>
+
+    /// Evict the passed `scopes`, deactivating them.
+    /// The (non-deferred) Future executes immediately. Consumers only need to sink if they care about the result.
+    @discardableResult func evict(_ scopes: [AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never>
+
+    /// Evict all currently hosted scopes, deactivating them.
+    /// The (non-deferred) Future executes immediately. Consumers only need to sink if they care about the result.
+    @discardableResult func evictAll() -> Future<[AnyScopedBehavior], Never>
+
 }
 
 extension ScopeHostingImpl where Self: ScopeHosting, Self: AnyObject {
@@ -25,15 +41,15 @@ extension ScopeHostingImpl where Self: ScopeHosting, Self: AnyObject {
 
 extension ScopeHostingImpl {
 
-    public func attachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<(), Never> {
+    public func host(_ scopes: [AnyScopedBehavior]) -> Future<(), Never> {
         hostComponent.attachSubscopes(scopes, to: self.eraseToAnyScopeHosting())
     }
 
-    public func detachSubscopes(_ scopes: [AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never> {
+    public func evict(_ scopes: [AnyScopedBehavior]) -> Future<[AnyScopedBehavior], Never> {
         hostComponent.detachSubscopes(scopes, from: self.eraseToAnyScopeHosting())
     }
 
-    public func detachAllSubscopes() -> Future<[AnyScopedBehavior], Never> {
+    public func evictAll() -> Future<[AnyScopedBehavior], Never> {
         hostComponent.detachAllSubscopes(from: self.eraseToAnyScopeHosting())
     }
 }

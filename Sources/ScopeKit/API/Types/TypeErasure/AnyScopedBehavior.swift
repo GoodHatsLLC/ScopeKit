@@ -33,7 +33,7 @@ extension AnyScopedBehavior: ScopedBehaviorImpl {
         underlyingObject
     }
 
-    func eraseToAnyScopedBehavior() -> AnyScopedBehavior {
+    public func eraseToAnyScopedBehavior() -> AnyScopedBehavior {
         return self
     }
 

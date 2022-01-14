@@ -25,17 +25,14 @@ public final class CancellableHolder: CancellableReceiver {
     private var cancellables = Set<AnyCancellable>()
 
     public func receive<C: Cancellable>(_ cancellable: C) {
-        cancellable.store(in: &self.cancellables)
+        cancellable.store(in: &cancellables)
     }
 
     public func reset() {
-        cancel()
-        cancellables = Set<AnyCancellable>()
-    }
-
-    public func cancel() {
         cancellables.forEach { cancellable in
             cancellable.cancel()
         }
+        cancellables.removeAll()
     }
+
 }

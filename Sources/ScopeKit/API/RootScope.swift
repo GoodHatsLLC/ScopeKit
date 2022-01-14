@@ -17,6 +17,7 @@ extension RootScope: ScopeHosting {
     }
 }
 
+
 extension RootScope: ScopeHostingImpl {
     var underlying: AnyObject {
         self
