@@ -2,10 +2,12 @@ import Foundation
 
 struct AuthenticationToken: Codable, Equatable {
 
-    static let fakeToken = AuthenticationToken(
-        grantDate: Date(),
-        grantDuration: 10
-    )
+    static var fakeToken: AuthenticationToken {
+        AuthenticationToken(
+            grantDate: Date(),
+            grantDuration: 50
+        )
+    }
 
     private static let diskCacheKey = "fake-authentication-token"
 

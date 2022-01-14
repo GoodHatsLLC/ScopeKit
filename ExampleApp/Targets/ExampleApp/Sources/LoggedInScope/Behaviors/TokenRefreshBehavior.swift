@@ -5,18 +5,17 @@ import ScopeKit
 final class TokenRefreshBehavior: Behavior {
 
     private let client = FakeNetworkClient()
-    private let currentTokenSubject = CurrentValueSubject<AuthenticationToken?, Never>(nil)
+    private let refreshTokenSubject: AnySubject<AuthenticationToken?, Never>
+    private let lastTokenSubject = CurrentValueSubject<AuthenticationToken?, Never>(nil)
 
-    var currentTokenPublisher: AnyPublisher<AuthenticationToken?, Never> {
-        currentTokenSubject.eraseToAnyPublisher()
-    }
-
-    func resetToken(_ newToken: AuthenticationToken?) {
-        currentTokenSubject.send(newToken)
+    init(token: AuthenticationToken, refreshTokenSubject: AnySubject<AuthenticationToken?, Never>) {
+        self.refreshTokenSubject = refreshTokenSubject
+        super.init()
+        lastTokenSubject.send(token)
     }
 
     override func willActivate(cancellables: inout Set<AnyCancellable>) {
-        currentTokenSubject
+        lastTokenSubject
             .compactMap { $0 }
             .map { token in
                 Just(())
@@ -44,7 +43,8 @@ final class TokenRefreshBehavior: Behavior {
             }
             .switchToLatest()
             .sink { [self] token in
-                currentTokenSubject.send(token)
+                lastTokenSubject.send(token)
+                refreshTokenSubject.send(token)
             }
             .store(in: &cancellables)
     }

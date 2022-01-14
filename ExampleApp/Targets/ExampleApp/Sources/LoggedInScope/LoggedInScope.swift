@@ -11,18 +11,23 @@ final class LoggedInScope: Scope {
 
     private weak var listener: LoggedInScopeListener?
     private let window: UIWindow
-    private let tokenPublisher: AnyPublisher<AuthenticationToken, Never>
     private let pastelBehavior = PastePublisherBehavior()
 
-    init(
-        listener: LoggedInScopeListener,
-        window: UIWindow,
-        tokenPublisher: AnyPublisher<AuthenticationToken, Never>
+    init(listener: LoggedInScopeListener,
+         window: UIWindow,
+         initialToken: AuthenticationToken,
+         tokenUpdateSubject: AnySubject<AuthenticationToken?, Never>
     ) {
         self.listener = listener
-        self.tokenPublisher = tokenPublisher
         self.window = window
+
         super.init()
+
+        TokenRefreshBehavior(
+            token: initialToken,
+            refreshTokenSubject: tokenUpdateSubject
+        ).attach(to: self)
+
         pastelBehavior.attach(to: self)
     }
 

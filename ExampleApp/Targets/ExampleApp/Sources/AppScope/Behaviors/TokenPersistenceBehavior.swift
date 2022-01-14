@@ -5,7 +5,9 @@ import ScopeKit
 final class TokenPersistenceBehavior: Behavior {
 
     var cachedToken: AuthenticationToken? {
-        AuthenticationToken.fetchFromDiskCache()
+        let token = AuthenticationToken.fetchFromDiskCache()
+        debugPrint("retrieved: \(String(describing: token))")
+        return token
     }
 
     private let inputPublisher: AnyPublisher<AuthenticationToken?, Never>
