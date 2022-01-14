@@ -33,6 +33,10 @@ public final class AnySubject<Output, Failure: Error>: Subject {
     public func receive<S>(subscriber: S) where S : Subscriber, Failure == S.Failure, Output == S.Input {
         anyPublisher.receive(subscriber: subscriber)
     }
+
+    public func eraseToAnySubject() -> AnySubject<Output, Failure> {
+        self
+    }
 }
 
 public extension Subject {

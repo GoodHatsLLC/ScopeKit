@@ -3,7 +3,7 @@ import Foundation
 import ScopeKit
 import UIKit
 
-final class PastePublisherBehavior: Behavior {
+final class PastelPublisherBehavior: Behavior {
 
     private let pastelSubject = CurrentValueSubject<UIColor, Never>(.gray)
 

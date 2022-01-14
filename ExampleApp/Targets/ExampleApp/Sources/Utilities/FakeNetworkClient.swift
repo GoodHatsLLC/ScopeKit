@@ -8,7 +8,7 @@ class FakeNetworkClient {
         static let password = "password"
     }
 
-    private let gracePeriod = 100.0
+    private static let gracePeriod = 100.0
 
     enum NetworkClientError: Error {
         case authenticationError
@@ -31,7 +31,7 @@ class FakeNetworkClient {
     func refresh(token: AuthenticationToken) -> Deferred<Future<AuthenticationToken, NetworkClientError>> {
         Deferred {
             Future { promise in
-                if Date().timeIntervalSince(token.grantDate) < (token.grantDuration + self.gracePeriod) {
+                if Date().timeIntervalSince(token.grantDate) < (token.grantDuration + FakeNetworkClient.gracePeriod) {
                     promise(.success(AuthenticationToken.fakeToken))
                 } else {
                     promise(.failure(.tokenRefreshError))

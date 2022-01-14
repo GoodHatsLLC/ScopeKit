@@ -18,13 +18,12 @@ final class TokenRefreshBehavior: Behavior {
         lastTokenSubject
             .compactMap { $0 }
             .map { token in
-                Just(())
-                    .delay(for: .seconds(token.grantDuration), scheduler: RunLoop.main)
-                    .map { token }
-                    .first()
+                Just(token)
+                    .delay(for: .seconds(token.grantDuration),
+                              scheduler: RunLoop.main)
             }
             .switchToLatest()
-            .map { [self] token in
+            .flatMap { [self] token in
                 client.refresh(token: token)
                     .handleEvents(
                         receiveCompletion: { completion in
@@ -41,10 +40,10 @@ final class TokenRefreshBehavior: Behavior {
                     .replaceError(with: nil)
                     .compactMap { $0 }
             }
-            .switchToLatest()
-            .sink { [self] token in
-                lastTokenSubject.send(token)
-                refreshTokenSubject.send(token)
+            .sink { [weak self] token in
+                guard let self = self else { return }
+                self.lastTokenSubject.send(token)
+                self.refreshTokenSubject.send(token)
             }
             .store(in: &cancellables)
     }

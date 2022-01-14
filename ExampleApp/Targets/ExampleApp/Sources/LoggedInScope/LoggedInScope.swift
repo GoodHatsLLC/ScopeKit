@@ -11,7 +11,7 @@ final class LoggedInScope: Scope {
 
     private weak var listener: LoggedInScopeListener?
     private let window: UIWindow
-    private let pastelBehavior = PastePublisherBehavior()
+    private let pastelBehavior = PastelPublisherBehavior()
 
     init(listener: LoggedInScopeListener,
          window: UIWindow,
@@ -29,6 +29,18 @@ final class LoggedInScope: Scope {
         ).attach(to: self)
 
         pastelBehavior.attach(to: self)
+
+        AnonymousBehavior { cancellables in
+            var count = 0
+            Timer
+                .publish(every: 60, on: .main, in: .default)
+                .autoconnect()
+                .sink { _ in
+                    count += 1
+                    debugPrint("🎉 Wow! You have been logged in for \(count) minute\(count > 1 ? "s" : "").")
+                }
+                .store(in: &cancellables)
+        }.attach(to: self)
     }
 
     override func willActivate(cancellables: inout Set<AnyCancellable>) {
