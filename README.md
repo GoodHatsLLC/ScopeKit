@@ -1,6 +1,8 @@
 # ScopeKit
 ScopeKit is a Swift library for managing the lifecycle of Combine subscriptions.
 
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGoodHatsLLC%2FScopeKit%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/GoodHatsLLC/ScopeKit) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGoodHatsLLC%2FScopeKit%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/GoodHatsLLC/ScopeKit)
+
 ## Purpose
 Managing application state is hard. Combine is a great way to do it, but it has a steep learning curve and even then leaves error-prone and rote management to be done manually.
 
