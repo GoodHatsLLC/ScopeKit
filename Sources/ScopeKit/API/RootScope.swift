@@ -1,7 +1,7 @@
 import Combine
 import Foundation
 
-public final class RootScope {
+open class RootScope {
 
     let hostComponent: HostComponent
 
