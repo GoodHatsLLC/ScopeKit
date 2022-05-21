@@ -1,3 +1,8 @@
+Archived.
+
+An early flawed design decision led to a lot of unnecessary complexity in implementation here.
+
+_______
 # ScopeKit
 ScopeKit is a Swift library for managing the lifecycle of Combine subscriptions.
 
